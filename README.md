@@ -559,9 +559,28 @@ against the shapes real exports take rather than only against files we wrote.
 - **Both signs in one file.** Usually means income is in there too. Only the
   person who exported it knows which sign is which, so it asks — once.
 
-Categories map by exact name first, then a table of the obvious synonyms
-("Eating out" → Food), and anything left over is offered as a category to create
-rather than quietly swept into Other.
+### Categories that do not match
+
+A category the file uses and this app does not is **not an error**, and it is not
+quietly swept into Other either — either of those would lose information the
+person is trying to bring across.
+
+Matching goes: the same name, then a table of the obvious synonyms ("Eating out"
+→ Food, "Petrol" → Transport), and whatever is left is offered as **Create
+"Pet supplies"**, already selected. Importing creates it as a real category —
+listed in Settings, pickable when adding an expense by hand, given a colour from
+the palette like any other, and an icon guessed from a word in its name so it
+does not sit in that list forever marked as the one that came from a machine.
+
+Every one of those is a dropdown, so anything can be pointed at an existing
+category instead, and a category redirected that way is never created. Two
+spellings of the same name are offered once and land in one category.
+
+One thing this does not do: **categories are not synced**. The sheet carries
+expenses, not the category list, so a category created by an import on one phone
+does not appear on another. An expense referencing an id the second device has
+never heard of is shown under an orphan category rather than dropped, so nothing
+is lost — but the name and icon have to be set again there.
 
 ## Backing up
 

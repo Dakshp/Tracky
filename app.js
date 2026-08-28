@@ -2193,6 +2193,35 @@ const CATEGORY_SYNONYMS = {
 
 const csvKey = (label) => String(label || '').toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
 
+// A created category sits in a list where every other row has a real icon, so a
+// placeholder dot would mark it forever as the one that came from a machine.
+// Any word in the name can supply one; anything unrecognised gets a luggage tag,
+// which reads as "a category" rather than as "something went wrong".
+const CATEGORY_ICONS = {
+  pet: '\u{1F43E}', pets: '\u{1F43E}', dog: '\u{1F43E}', cat: '\u{1F43E}',
+  coffee: '\u{2615}', tea: '\u{2615}', drinks: '\u{1F37A}', alcohol: '\u{1F37A}',
+  baby: '\u{1F37C}', kids: '\u{1F9F8}', children: '\u{1F9F8}', toys: '\u{1F9F8}',
+  beauty: '\u{1F484}', salon: '\u{1F487}', haircut: '\u{2702}',
+  charity: '\u{1F49D}', donation: '\u{1F49D}', gift: '\u{1F381}', gifts: '\u{1F381}',
+  travel: '\u{2708}', flight: '\u{2708}', hotel: '\u{1F3E8}', holiday: '\u{1F3D6}',
+  fuel: '\u{26FD}', petrol: '\u{26FD}', parking: '\u{1F17F}', car: '\u{1F697}',
+  laundry: '\u{1F9FA}', cleaning: '\u{1F9F9}', furniture: '\u{1F6CB}',
+  savings: '\u{1F3E6}', investment: '\u{1F4C8}', loan: '\u{1F3E6}', emi: '\u{1F3E6}',
+  tax: '\u{1F4C4}', taxes: '\u{1F4C4}', fees: '\u{1F4C4}', fee: '\u{1F4C4}',
+  work: '\u{1F4BC}', office: '\u{1F4BC}', business: '\u{1F4BC}',
+  pharmacy: '\u{1F48A}', gym: '\u{1F3CB}', fitness: '\u{1F3CB}', sports: '\u{26BD}',
+  music: '\u{1F3B5}', books: '\u{1F4DA}', clothes: '\u{1F455}', shoes: '\u{1F45F}',
+  phone: '\u{1F4F1}', internet: '\u{1F310}', electricity: '\u{1F4A1}', water: '\u{1F6BF}',
+};
+const NEW_CATEGORY_ICON = '\u{1F3F7}';
+
+function iconForNewCategory(label) {
+  for (const word of csvKey(label).split(' ')) {
+    if (CATEGORY_ICONS[word]) return CATEGORY_ICONS[word];
+  }
+  return NEW_CATEGORY_ICON;
+}
+
 // Always with the year: the whole point of this line is the span the file
 // covers, and "14 Aug" hides whether that is this year or five years ago.
 const spanDate = (iso) => fmtUTC(parseUTC(iso), { day: 'numeric', month: 'short', year: 'numeric' });
@@ -2358,7 +2387,7 @@ function commitCsvImport() {
     let id = csvImport.catMap[k];
     if (!id) {
       try {
-        id = Store.addCategory({ label, icon: '•' }).id;
+        id = Store.addCategory({ label, icon: iconForNewCategory(label) }).id;
       } catch (err) {
         id = 'other';
       }
