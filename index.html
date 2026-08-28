@@ -317,6 +317,19 @@
           </p>
         </div>
 
+        <div class="section-head"><h2>Bring data from another app</h2></div>
+        <div class="card">
+          <p class="hint">Most expense apps can export a CSV file. Pick one here and
+            Tracky will read it, show you what it found, and let you check it before
+            anything is saved. Your existing expenses are kept &mdash; this adds to
+            them.</p>
+          <button class="btn-secondary" id="csvImportBtn">Choose a CSV file</button>
+          <input type="file" id="csvFile" accept="text/csv,.csv,text/plain,.txt" hidden>
+          <!-- Everything below stays hidden until a file has actually been read,
+               so the resting state of this card is one button. -->
+          <div id="csvReport" class="import" hidden></div>
+        </div>
+
         <div class="section-head"><h2>Your data</h2></div>
         <div class="card">
           <p class="hint">Everything is stored on this device only. Back up before switching phones or clearing your browser.</p>
@@ -437,6 +450,7 @@
 <div class="toast hidden" id="toast"></div>
 
 <script src="storage.js"></script>
+<script src="csv.js"></script>
 <script src="sync.js"></script>
 <script src="app.js"></script>
 <script>

@@ -2,7 +2,7 @@
 // two are what tell a fixed build apart from a cached one. Where a release only
 // rewrites visible copy, the copy itself is the tell, so this may hold while
 // CACHE takes a suffix instead.
-const APP_VERSION = 24;
+const APP_VERSION = 25;
 
 const state = {
   date: todayStr(),
@@ -2148,6 +2148,244 @@ function handleImport(file) {
   reader.readAsText(file);
 }
 
+/* ---------- Importing a CSV from another app ----------
+   Three rules shape this screen.
+
+   Nothing is written until the last button. Someone moving five years of
+   spending across cannot undo a bad import, so every guess this code makes is
+   shown, and every one of them is correctable, before anything is saved.
+
+   It asks only what it cannot work out. The date order, which sign means money
+   spent, which column is which - each question appears only when the file is
+   genuinely ambiguous about it, because a wizard that asks five questions to
+   import an obvious file teaches people to click through without reading.
+
+   It never silently drops a row. Rows it could not read are counted, and can be
+   listed with their line numbers. */
+
+const csvImport = { text: '', result: null, dateOrder: null, spendSign: null, catMap: {} };
+
+// Another app's category names, mapped to the ones here. Only the obvious
+// synonyms - anything unrecognised is offered to the person to place, since
+// guessing wrong is worse than asking.
+const CATEGORY_SYNONYMS = {
+  food: 'food', foods: 'food', dining: 'food', restaurant: 'food', restaurants: 'food',
+  'eating out': 'food', meal: 'food', meals: 'food', 'food drink': 'food', cafe: 'food',
+  grocery: 'groceries', groceries: 'groceries', supermarket: 'groceries', market: 'groceries',
+  transport: 'transport', transportation: 'transport', travel: 'transport', taxi: 'transport',
+  cab: 'transport', fuel: 'transport', petrol: 'transport', gas: 'transport', commute: 'transport',
+  bus: 'transport', train: 'transport', auto: 'transport', car: 'transport',
+  bill: 'bills', bills: 'bills', utilities: 'bills', utility: 'bills', electricity: 'bills',
+  water: 'bills', internet: 'bills', phone: 'bills', mobile: 'bills', recharge: 'bills',
+  subscription: 'bills', subscriptions: 'bills', rent: 'home', housing: 'home', home: 'home',
+  household: 'home', maintenance: 'home', repairs: 'home',
+  health: 'health', medical: 'health', medicine: 'health', doctor: 'health', pharmacy: 'health',
+  fitness: 'health', hospital: 'health', insurance: 'health',
+  shopping: 'shopping', clothes: 'shopping', clothing: 'shopping', apparel: 'shopping',
+  electronics: 'shopping', gifts: 'shopping', gift: 'shopping',
+  entertainment: 'fun', fun: 'fun', movies: 'fun', movie: 'fun', games: 'fun', hobby: 'fun',
+  leisure: 'fun', sports: 'fun', holiday: 'fun', vacation: 'fun',
+  education: 'education', school: 'education', college: 'education', course: 'education',
+  books: 'education', tuition: 'education',
+  other: 'other', misc: 'other', miscellaneous: 'other', general: 'other', uncategorized: 'other',
+  uncategorised: 'other', none: 'other',
+};
+
+const csvKey = (label) => String(label || '').toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
+
+// Always with the year: the whole point of this line is the span the file
+// covers, and "14 Aug" hides whether that is this year or five years ago.
+const spanDate = (iso) => fmtUTC(parseUTC(iso), { day: 'numeric', month: 'short', year: 'numeric' });
+
+// Same name, a known synonym, or nothing - in that order.
+function guessCategory(label) {
+  const key = csvKey(label);
+  if (!key) return 'other';
+  const own = Store.getCategories({ includeHidden: true });
+  const exact = own.find((c) => csvKey(c.label) === key || c.id === key.replace(/ /g, '-'));
+  if (exact) return exact.id;
+  const mapped = CATEGORY_SYNONYMS[key];
+  if (mapped && own.some((c) => c.id === mapped)) return mapped;
+  return '';   // empty means "make one with this name"
+}
+
+function startCsvImport(file) {
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = () => {
+    csvImport.text = String(reader.result || '');
+    csvImport.dateOrder = null;
+    csvImport.spendSign = null;
+    csvImport.catMap = {};
+    readCsv();
+    el('csvFile').value = '';
+  };
+  reader.onerror = () => toast('Could not read that file');
+  reader.readAsText(file);
+}
+
+function readCsv(columns) {
+  const opts = {};
+  if (csvImport.dateOrder) opts.dateOrder = csvImport.dateOrder;
+  if (columns) opts.columns = columns;
+  else if (csvImport.result && csvImport.result.columns) opts.columns = csvImport.result.columns;
+  csvImport.result = Csv.read(csvImport.text, opts);
+  // A fresh read means fresh categories to place; keep any the person already
+  // set, since re-reading after a date-order answer must not throw their work
+  // away.
+  for (const label of csvImport.result.categories || []) {
+    const k = csvKey(label);
+    if (!(k in csvImport.catMap)) csvImport.catMap[k] = guessCategory(label);
+  }
+  renderCsvReport();
+}
+
+// The rows that will actually be saved, after the sign question is settled.
+function csvKeepers() {
+  const r = csvImport.result;
+  if (!r || !r.ok) return [];
+  if (!r.mixedSigns) return r.records;
+  if (csvImport.spendSign === null) return [];
+  return r.records.filter((x) => x.negative === (csvImport.spendSign === 'negative'));
+}
+
+function renderCsvReport() {
+  const box = el('csvReport');
+  const r = csvImport.result;
+  if (!r) { box.hidden = true; box.innerHTML = ''; return; }
+  box.hidden = false;
+
+  const parts = [];
+  const opt = (v, label, on) => `<option value="${escapeHtml(v)}"${on ? ' selected' : ''}>${escapeHtml(label)}</option>`;
+
+  if (r.needs === 'dateOrder') {
+    parts.push(`<p class="import-ask">Dates in this file look like
+      <strong>${escapeHtml(String((r.sample[0] || [])[r.columns.date] || ''))}</strong>.
+      Which way round is that?</p>
+      <div class="import-choices">
+        <button class="btn-secondary" data-order="dmy">Day first &middot; 14/08</button>
+        <button class="btn-secondary" data-order="mdy">Month first &middot; 08/14</button>
+      </div>`);
+    box.innerHTML = parts.join('');
+    return;
+  }
+
+  // Which column is which. Always shown once a file is loaded, because a wrong
+  // guess here is the difference between importing someone's history and
+  // importing nonsense, and it is invisible unless it is on the screen.
+  if (r.header) {
+    const pick = (field, allowNone) => {
+      const chosen = r.columns[field];
+      const opts = (allowNone ? [opt('-1', 'None', chosen === -1)] : [])
+        .concat(r.header.map((h, i) => opt(String(i), h || `Column ${i + 1}`, chosen === i)));
+      return `<label class="import-map"><span>${field[0].toUpperCase() + field.slice(1)}</span>
+        <select data-field="${field}">${opts.join('')}</select></label>`;
+    };
+    parts.push(`<div class="import-maps">${pick('date')}${pick('amount')}${pick('category', true)}${pick('note', true)}</div>`);
+  }
+
+  if (!r.ok) {
+    parts.push(`<p class="import-bad">${escapeHtml(r.error)} Set them above.</p>`);
+    box.innerHTML = parts.join('');
+    return;
+  }
+
+  if (r.mixedSigns) {
+    parts.push(`<p class="import-ask">This file has both minus and plus amounts, so
+      it probably holds money coming in as well as going out. Which ones did you
+      <strong>spend</strong>?</p>
+      <div class="import-choices">
+        <button class="btn-secondary${csvImport.spendSign === 'negative' ? ' chosen' : ''}" data-sign="negative">The minus ones</button>
+        <button class="btn-secondary${csvImport.spendSign === 'positive' ? ' chosen' : ''}" data-sign="positive">The plus ones</button>
+      </div>`);
+  }
+
+  const keep = csvKeepers();
+
+  if (r.categories.length && keep.length) {
+    const own = Store.getCategories({ includeHidden: true });
+    const rows = r.categories.map((label) => {
+      const k = csvKey(label);
+      const chosen = csvImport.catMap[k];
+      const opts = own.map((c) => opt(c.id, c.label, chosen === c.id))
+        .concat(opt('', `Create “${label}”`, !chosen));
+      return `<label class="import-map"><span>${escapeHtml(label)}</span>
+        <select data-cat="${escapeHtml(k)}">${opts.join('')}</select></label>`;
+    });
+    parts.push(`<p class="import-head">Their categories, as yours</p>
+      <div class="import-maps">${rows.join('')}</div>`);
+  }
+
+  if (keep.length) {
+    const dates = keep.map((x) => x.date).sort();
+    const total = keep.reduce((n, x) => n + x.amountMinor, 0);
+    parts.push(`<p class="import-head">What will be added</p>
+      <ul class="import-facts">
+        <li><strong>${keep.length}</strong> ${keep.length === 1 ? 'expense' : 'expenses'}</li>
+        <li>${escapeHtml(spanDate(dates[0]))} to ${escapeHtml(spanDate(dates[dates.length - 1]))}</li>
+        <li>${escapeHtml(formatMoney(total, { compact: true }))} in total</li>
+      </ul>`);
+  } else if (!r.mixedSigns || csvImport.spendSign !== null) {
+    parts.push('<p class="import-bad">Nothing in this file could be read as an expense.</p>');
+  }
+
+  if (r.rejects.length) {
+    parts.push(`<p class="import-skips">${r.rejects.length}
+      ${r.rejects.length === 1 ? 'row' : 'rows'} could not be read and will be left out.
+      <button class="import-link" id="csvWhyBtn">Which?</button></p>
+      <ul class="import-rejects" id="csvRejects" hidden>${r.rejects.slice(0, 20).map((x) =>
+        `<li>Line ${x.line} &mdash; ${escapeHtml(x.why)}</li>`).join('')}${
+        r.rejects.length > 20 ? `<li>&hellip; and ${r.rejects.length - 20} more</li>` : ''}</ul>`);
+  }
+
+  if (keep.length) {
+    parts.push(`<button class="btn-secondary import-go" id="csvGoBtn">Add ${keep.length}
+      ${keep.length === 1 ? 'expense' : 'expenses'}</button>`);
+  }
+  parts.push('<button class="import-link" id="csvCancelBtn">Cancel</button>');
+  box.innerHTML = parts.join('');
+}
+
+function commitCsvImport() {
+  const keep = csvKeepers();
+  if (!keep.length) return;
+
+  // Create the categories that were left as "Create ...", once each, before
+  // any expense points at one.
+  const resolved = {};
+  for (const label of csvImport.result.categories) {
+    const k = csvKey(label);
+    let id = csvImport.catMap[k];
+    if (!id) {
+      try {
+        id = Store.addCategory({ label, icon: '•' }).id;
+      } catch (err) {
+        id = 'other';
+      }
+      csvImport.catMap[k] = id;
+    }
+    resolved[k] = id;
+  }
+
+  const result = Store.importExpenses(keep.map((x) => ({
+    date: x.date,
+    amountMinor: x.amountMinor,
+    category: resolved[csvKey(x.category)] || 'other',
+    note: x.note,
+  })));
+
+  csvImport.result = null;
+  csvImport.text = '';
+  renderCsvReport();
+  renderAll();
+  renderSettings();
+  scheduleSync();
+  const extra = result.duplicates
+    ? ` · skipped ${result.duplicates} already here`
+    : '';
+  toast(`Added ${result.added} ${result.added === 1 ? 'expense' : 'expenses'}${extra}`);
+}
+
 function clearEverything() {
   if (!window.confirm('Erase every expense and reset settings?\n\nThis cannot be undone.')) return;
   if (!window.confirm('Really erase everything? Download a backup first if you are unsure.')) return;
@@ -2301,6 +2539,36 @@ function init() {
   el('exportCsvBtn').addEventListener('click', downloadCsv);
   el('importBtn').addEventListener('click', () => el('importFile').click());
   el('importFile').addEventListener('change', (e) => handleImport(e.target.files[0]));
+
+  el('csvImportBtn').addEventListener('click', () => el('csvFile').click());
+  el('csvFile').addEventListener('change', (e) => startCsvImport(e.target.files[0]));
+  // One listener for the whole report, since it is rebuilt on every answer.
+  el('csvReport').addEventListener('click', (e) => {
+    const order = e.target.closest('[data-order]');
+    if (order) { csvImport.dateOrder = order.dataset.order; readCsv(); return; }
+    const sign = e.target.closest('[data-sign]');
+    if (sign) { csvImport.spendSign = sign.dataset.sign; renderCsvReport(); return; }
+    if (e.target.closest('#csvWhyBtn')) { el('csvRejects').hidden = !el('csvRejects').hidden; return; }
+    if (e.target.closest('#csvGoBtn')) { commitCsvImport(); return; }
+    if (e.target.closest('#csvCancelBtn')) {
+      csvImport.result = null;
+      csvImport.text = '';
+      renderCsvReport();
+    }
+  });
+  el('csvReport').addEventListener('change', (e) => {
+    const field = e.target.dataset.field;
+    if (field) {
+      const columns = { ...csvImport.result.columns, [field]: Number(e.target.value) };
+      readCsv(columns);
+      return;
+    }
+    const cat = e.target.dataset.cat;
+    if (cat !== undefined) {
+      csvImport.catMap[cat] = e.target.value;
+      renderCsvReport();
+    }
+  });
   el('clearBtn').addEventListener('click', clearEverything);
 
   el('catCancel').addEventListener('click', closeCategoryEditor);

@@ -510,6 +510,59 @@ All four values — the two tags, `--bg` in both themes, and the manifest's
 `theme_color` — are asserted equal by the status-bar suite, because the failure
 mode here is a near-miss, and a near-miss is not something you can see by eye.
 
+## Coming from another app
+
+**Settings → Data & Sync → Bring data from another app** reads a CSV export from
+whatever someone was using before. It is the difference between trying Tracky and
+moving to it: an expense tracker with no history in it cannot answer the only
+question anyone asks of one.
+
+Three rules shape that screen.
+
+**Nothing is written until the last button.** Someone moving five years of
+spending across cannot undo a bad import, so every guess the parser makes is on
+screen — which column is which, how their categories map to these ones, how many
+rows, what span, what total — and every one is correctable before anything is
+saved. It **adds**; it does not replace, unlike restoring a Tracky backup. The
+expenses someone typed in while trying the app are the last thing an import
+should destroy.
+
+**It asks only what it cannot work out.** The date order, which sign means money
+spent, which column is which — each question appears only when the file is
+genuinely ambiguous about it. A wizard that asks five questions to import an
+obvious file teaches people to click through without reading, which is exactly
+the habit that makes the one question that *mattered* get missed.
+
+**It never silently drops a row.** Unreadable rows are counted, and can be listed
+with their line numbers.
+
+### What the parser has to survive
+
+Files nobody here has seen, which is why `csv.js` is separate, pure, and tested
+against the shapes real exports take rather than only against files we wrote.
+
+- **A comma inside a note.** `split(',')` shifts every column after it, and the
+  result looks like data rather than an error. Hence a real quote-aware scanner.
+- **Semicolons and tabs.** A machine set to a comma-decimal locale exports with
+  semicolons, and such a file read as comma-separated parses as one column —
+  which surfaces as "no date column found" rather than as the delimiter problem
+  it is. The delimiter is sniffed, counting only outside quotes so a note full of
+  commas cannot win the vote.
+- **`1,234.56` and `1.234,56`.** The same amount under two conventions, and
+  reading it wrong is off by a factor of a hundred rather than visibly broken.
+  The rule: the last separator is the decimal point when 1–2 digits follow it,
+  and a thousands mark otherwise. That reads both, and `1,23,456.78` too.
+- **`08/09/2026`.** Genuinely ambiguous, and no cleverness fixes it — so any
+  value over 12 in either slot settles the file, and only a file where *every*
+  row is ambiguous asks. ISO and written months are never asked about.
+- **31 September.** Refused, rather than let `Date` roll it into October.
+- **Both signs in one file.** Usually means income is in there too. Only the
+  person who exported it knows which sign is which, so it asks — once.
+
+Categories map by exact name first, then a table of the obvious synonyms
+("Eating out" → Food), and anything left over is offered as a category to create
+rather than quietly swept into Other.
+
 ## Backing up
 
 Your data lives only on the device. Before switching phones, clearing browser

@@ -687,6 +687,55 @@ const Store = (() => {
     return { expenses: data.expenses.length };
   }
 
+  /**
+   * Appends expenses that came from somewhere else.
+   *
+   * Deliberately NOT importData: a Tracky backup replaces what is here, because
+   * it is this app's own history arriving whole. A CSV from another app is the
+   * opposite - it is being added to whatever the person has already typed in,
+   * and replacing that would destroy the very thing they were told to try
+   * first.
+   *
+   * `category` must already be a real category id; resolving another app's
+   * labels is the caller's job, since only the person importing knows that
+   * "Eating out" is this app's Food.
+   *
+   * Records identical to one already stored are skipped. Importing the same
+   * file twice is an ordinary mistake and doubling five years of spending is a
+   * bad way to find out you made it.
+   */
+  function importExpenses(records) {
+    const data = load();
+    const stamp = nowIso();
+    const fingerprint = (e) => [e.date, e.amountMinor, e.category, String(e.note || '').trim()].join('|');
+    const seen = new Set(live(data.expenses).map(fingerprint));
+    const valid = new Set(data.categories.map((c) => c.id));
+    let added = 0;
+    let duplicates = 0;
+    let skipped = 0;
+
+    for (const r of records || []) {
+      const record = normalizeExpense({
+        id: data.nextId++,
+        uid: newUid(),
+        date: r.date,
+        amountMinor: r.amountMinor,
+        category: valid.has(r.category) ? r.category : 'other',
+        note: r.note,
+        createdAt: stamp,
+        updatedAt: stamp,
+      });
+      if (!record.date || record.amountMinor <= 0) { skipped++; data.nextId--; continue; }
+      const key = fingerprint(record);
+      if (seen.has(key)) { duplicates++; data.nextId--; continue; }
+      seen.add(key);
+      data.expenses.push(record);
+      added++;
+    }
+    save(data);
+    return { added, duplicates, skipped };
+  }
+
   function clearAll() {
     save(freshData());
   }
@@ -719,6 +768,7 @@ const Store = (() => {
     getComparison,
     getSettings,
     setSettings,
+    importExpenses,
     getPendingExpenses,
     mergeRemote,
     setLastSyncAt,

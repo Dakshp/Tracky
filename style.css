@@ -6,6 +6,9 @@
 
   --primary: #4f46e5;
   --primary-soft: #e9e9fd;
+  /* Ink for text sitting ON the accent. White works on the light accent and
+     fails badly on the dark one, which is far paler - see the dark block. */
+  --on-primary: #ffffff;
   --danger: #d93b3b;
   /* iOS grouped-background pairing: the page is the grey, cards are the white.
      Surfaces are separated by colour and a hairline, never by a drop shadow -
@@ -79,6 +82,9 @@
 
   --primary: #8f96ff;
   --primary-soft: #262640;
+  /* Dark mode lifts the accent to #8f96ff so it reads against black, which
+     leaves white text on it at 2.63:1. Near-black on it is 7.5:1. */
+  --on-primary: #14141a;
   --danger: #ff6b6b;
   /* True black, not dark grey. On the OLED panel in every iPhone since the X
      the pixels are simply off, which is why Apple's dark mode goes here and why
@@ -927,7 +933,9 @@ button {
   transition: filter .14s ease;
 }
 .row-action svg { width: 20px; height: 20px; stroke: currentColor; }
-.action-edit { background: var(--primary); }
+/* Edit takes the accent's own ink; delete keeps white, since --danger stays
+   dark enough in both themes to carry it. */
+.action-edit { background: var(--primary); color: var(--on-primary); }
 .action-delete { background: var(--danger); }
 .row-action:active { filter: brightness(.86); }
 
@@ -1293,7 +1301,7 @@ button {
   padding: 15px;
   border-radius: 14px;
   background: var(--primary);
-  color: #fff;
+  color: var(--on-primary);
   font-size: 16px;
   font-weight: 650;
 }
@@ -1326,6 +1334,104 @@ button {
 .field select:focus, .field input:focus { outline: none; color: var(--primary); }
 
 .hint { font-size: var(--t-foot); color: var(--muted); padding: 12px 16px; margin: 0; line-height: 1.45; }
+
+/* ---------- Importing a CSV ----------
+   A form that appears one answer at a time. It sits inside the card rather than
+   in a sheet of its own, because every question here is about the file named on
+   the button directly above it. */
+.import { padding: 0 16px 6px; }
+
+.import-head {
+  margin: 18px 0 8px;
+  font-size: var(--t-foot);
+  font-weight: 650;
+  color: var(--muted);
+}
+.import-ask {
+  margin: 14px 0 10px;
+  font-size: var(--t-sub);
+  line-height: 1.45;
+  color: var(--text);
+}
+.import-bad { margin: 14px 0 4px; font-size: var(--t-sub); color: var(--danger); line-height: 1.45; }
+
+.import-choices { display: flex; gap: 8px; margin-bottom: 4px; }
+.import-choices .btn-secondary { width: auto; flex: 1; margin: 0; }
+/* The answer stays visible after it is given: a question that vanishes leaves
+   nothing on screen saying which way it was answered. */
+.import-choices .btn-secondary.chosen {
+  background: var(--primary-soft);
+  color: var(--primary);
+  font-weight: 650;
+}
+
+.import-maps { display: flex; flex-direction: column; gap: 1px; }
+.import-map {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 11px 0;
+  border-bottom: 1px solid var(--separator);
+  font-size: var(--t-sub);
+}
+.import-map:last-child { border-bottom: none; }
+.import-map > span {
+  font-weight: 550;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.import-map select {
+  border: none;
+  background: none;
+  color: var(--primary);
+  font-size: var(--t-sub);
+  text-align: right;
+  max-width: 58%;
+  padding: 2px;
+}
+
+.import-facts { list-style: none; margin: 0; padding: 0; }
+.import-facts li {
+  font-size: var(--t-sub);
+  color: var(--muted);
+  padding: 5px 0;
+  line-height: 1.4;
+}
+.import-facts strong { color: var(--text); font-size: var(--t-head); }
+
+.import-skips { margin: 14px 0 0; font-size: var(--t-foot); color: var(--muted); line-height: 1.45; }
+.import-rejects {
+  margin: 8px 0 0;
+  padding-left: 18px;
+  font-size: var(--t-foot);
+  color: var(--muted);
+  line-height: 1.5;
+}
+.import-link {
+  background: none;
+  border: none;
+  padding: 4px 0;
+  font: inherit;
+  font-size: var(--t-foot);
+  color: var(--primary);
+  cursor: pointer;
+}
+#csvCancelBtn { display: block; margin: 12px auto 6px; }
+
+/* The one button here that writes anything, so it is the one that looks like a
+   decision rather than a link. */
+/* Doubled to outrank .btn-secondary, which is defined later in this file and
+   would otherwise repaint it as another quiet grey row. */
+.import-go.import-go {
+  width: 100%;
+  margin: 18px 0 4px;
+  background: var(--primary);
+  color: var(--on-primary);
+  font-weight: 650;
+}
 
 /* ---------- About ----------
    The one card on Settings that is read rather than operated, so it gets
