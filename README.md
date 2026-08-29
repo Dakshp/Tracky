@@ -483,6 +483,28 @@ Version 23 shipped **more than once**: the calendar and the fold, then this copy
 together, but where a release only rewrites visible words, the words are their own
 proof of arrival — so the version held and `CACHE` took a suffix instead.
 
+### The nav bar is chrome, not an object
+
+The tab bar and the nav bar look like the same material and are not the same
+kind of thing. The tab bar is an object floating over the page: it has edges on
+all four sides, it earns a specular rim and a lift. The nav bar is fused to the
+top of the screen — it has no left or right edge to catch light on, and nothing
+underneath it to cast a shadow onto.
+
+Sharing one treatment gave the nav bar a drop shadow and a 1px rim down all four
+sides, which turned it into a raised, bordered slab sitting on the app. That is a
+look from a decade ago, and it is what "old fashioned" turned out to mean.
+
+It now keeps the material and loses the object: the blur stays, the shadow goes,
+and the rim becomes a single hairline along the bottom. It also gets its own
+fill, kept close to the page rather than borrowed from the tab bar's — over a
+true-black page the shared value sat around `rgb(33,33,43)`, which is a visible
+rectangle rather than the page seen through something.
+
+Checked by measurement rather than by eye, in both themes: no shadow at rest or
+scrolled, the blur present, the bar spanning the full width, the rim a bottom
+hairline only, and the title's contrast sampled off the rendered pixels.
+
 ## The strip above the page
 
 On a home-screen iPhone app, the band behind the clock and the battery is painted

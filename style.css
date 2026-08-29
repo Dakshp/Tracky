@@ -55,6 +55,13 @@
      ground than a solid card. Darker than --muted by exactly enough to keep the
      tab labels above 4.5:1 with a white expense row blurred behind them. */
   --glass-ink-muted: #5e5e6c;
+  /* The nav bar is its own material. The tab bar is an object floating over the
+     page and earns a rim and a shadow; the nav bar is chrome fused to the top
+     edge of the screen, so it gets the blur and a single hairline and nothing
+     else. Sharing one treatment gave it a border down all four sides and a drop
+     shadow, which read as a raised panel - a look iOS left behind years ago. */
+  --header-fill: rgba(255, 255, 255, .72);
+  --header-hairline: rgba(60, 60, 67, .18);
 
   /* One hue per category. Given as numbered slots so a category stores an index
      and the theme decides the lightness - the same colour needs to be deeper on
@@ -103,6 +110,14 @@
      flat slab. */
   --glass-fill: rgba(104, 104, 134, .32);
   --glass-ink-muted: #c2c2d2;
+  /* Close to the page, not a grey slab on it. At the old lightness this sat at
+     roughly rgb(33,33,43) over a true-black page, which is a visible rectangle
+     rather than the page seen through something. */
+  --header-fill: rgba(20, 20, 23, .78);
+  /* With the fill this close to a true-black page, the hairline is doing all
+     the separating, so it has to be a shade stronger than the ones between
+     rows inside a card. */
+  --header-hairline: rgba(255, 255, 255, .16);
   --glass-rim-top: rgba(255, 255, 255, .50);
   --glass-rim-bottom: rgba(255, 255, 255, .04);
   --glass-hairline: rgba(255, 255, 255, .14);
@@ -148,6 +163,25 @@
   mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
   mask-composite: exclude;
   pointer-events: none;
+}
+
+/* The nav bar keeps the material and loses the object: no lift, and the rim
+   becomes one hairline along the bottom instead of a border round all four
+   sides. A bar welded to the top of the screen has no left or right edge to
+   catch light on, and drawing one anyway is what made it look like a separate
+   block laid over the app. */
+.screen.scrolled .app-header {
+  background: var(--header-fill);
+  box-shadow: none;
+}
+.screen.scrolled .app-header::after {
+  inset: auto 0 0 0;
+  height: 1px;
+  padding: 0;
+  border-radius: 0;
+  background: var(--header-hairline);
+  -webkit-mask: none;
+  mask: none;
 }
 
 /* Two ways the blur can be absent: the engine lacks it, or the reader has asked
