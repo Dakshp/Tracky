@@ -582,6 +582,78 @@ does not appear on another. An expense referencing an id the second device has
 never heard of is shown under an orphan category rather than dropped, so nothing
 is lost — but the name and icon have to be set again there.
 
+## What a tester pass turned up
+
+Five defects, all shipped, all found by asking what a person eventually produces
+by accident rather than whether the happy path works. Each is pinned by a check
+in the robustness suite.
+
+**A double tap on Save booked the expense twice.** `closeSheet()` cleared the id
+being edited but left the typed amount standing, so a second tap passed the same
+amount through again — and a phone delivers a second tap readily, since the frame
+where the sheet is closing still has the button under the finger. Two identical
+expenses, and nothing on screen afterwards saying which was the mistake. The
+sheet now clears the amount, the note and the Save button on close.
+
+**`Infinity` was accepted and stored as nothing.** `Math.max(0, Infinity)` is
+`Infinity`, `JSON.stringify` writes that as `null`, and the row came back after a
+reload with no amount at all. Amounts are now coerced to a finite integer and
+clamped.
+
+**A junk date was stored verbatim.** An expense dated `"nonsense"` belongs to no
+day, month or year: it sits in the file, is counted by nothing, and appears on no
+screen — money that vanished without being deleted. Dates must now parse as real
+calendar days, which also refuses 30 February and 31 April rather than letting
+`Date` roll them into the next month.
+
+**One bad row killed a whole sync.** `normalizeExpense(null)` threw, so a single
+malformed row from the sheet took down the entire merge with a `TypeError` and
+sync stayed broken until someone found the row by hand. An unusable record now
+costs that record and nothing else.
+
+**A note could outgrow the sheet.** `server/Code.gs` stores 200 characters; the
+app stored any length, so a long description from a CSV was one length here and
+another there — a difference no screen shows and nothing reconciles.
+
+The three that reach storage are fixed **in `normalizeExpense`**, not at the
+keypad. Every expense in the app comes through there — typed in, restored from a
+backup, read out of a CSV, merged down from the sheet — and a guard on the keypad
+protects exactly one of those four doors.
+
+Also fixed in the same pass: `.btn-primary` was white on the accent, which is
+6.29:1 in light and **2.63:1 in dark**, where the accent lifts to a pale
+`#8f96ff` so it can be seen against black. An `--on-primary` token now carries
+near-black there.
+
+What held up: date arithmetic across month and year boundaries, leap years,
+three timezones either side of the date line, recovery from six kinds of damaged
+`localStorage`, budget maths at zero, at exactly on budget, over budget and on the
+last day of a 31-day month, delete-then-undo, and fast tab switching.
+
+## The icon
+
+`tools/make-icons.js` generates all three files from one definition, because they
+are the same artwork at different sizes and safe areas and hand-editing three
+PNGs is how a maskable icon ends up cropped differently from the one beside it.
+
+    node tools/make-icons.js          # OLED black
+    node tools/make-icons.js indigo   # the original purple
+
+All three are **full-bleed squares with square corners**. iOS masks a home-screen
+icon into its own squircle and Android into whatever shape the launcher uses, so
+rounding the corners here would round an already-rounded shape and leave
+transparent notches at the edges of the result.
+
+The maskable one draws its glyph smaller, because its crop is unknown and can be
+a full circle: everything inked has to sit inside the middle 80%. The suite
+measures the actual ink bounding box against that circle rather than trusting the
+margin to be right.
+
+It also caught a bug in the generator itself: `letter-spacing` is applied after
+the last character as well as between characters, so centring a one-letter line
+with it left the glyph 5px off-centre at 512 — invisible until a launcher crop
+takes an uneven bite.
+
 ## Backing up
 
 Your data lives only on the device. Before switching phones, clearing browser

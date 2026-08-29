@@ -75,7 +75,7 @@ const Store = (() => {
   function normalizeCategory(c, index) {
     const tint = Number(c.tint);
     return {
-      id: String(c.id == null ? '' : c.id).trim(),
+      id: String(c.id == null ? '' : c.id).trim().slice(0, 40),
       label: String(c.label == null ? '' : c.label).trim().slice(0, 30) || 'Untitled',
       icon: String(c.icon == null ? '' : c.icon).trim().slice(0, 4) || '\u{2728}',
       // A backup written before colours existed has no tint. Falling back to the
@@ -107,23 +107,65 @@ const Store = (() => {
     return new Date().toISOString();
   }
 
-  function normalizeExpense(e) {
+  // Every expense in the app comes through here - typed in, restored from a
+  // backup, read out of a CSV, or merged down from the sheet - which makes it
+  // the only place worth validating. A guard on the keypad protects one door.
+
+  // About 21 million in a currency with 100 minor units. High enough that no
+  // real expense meets it, low enough that a total of them cannot lose
+  // precision, and finite, which Infinity is not: Math.max(0, Infinity) is
+  // Infinity, JSON.stringify turns that into null, and the row comes back after
+  // a reload with no amount at all.
+  const MAX_MINOR = 2e9;
+
+  function cleanMinor(value) {
+    const n = Number(value);
+    if (!Number.isFinite(n)) return 0;
+    return Math.min(Math.max(0, Math.round(n)), MAX_MINOR);
+  }
+
+  // A date has to be a real calendar date, not merely a string. Stored as one,
+  // "nonsense" belongs to no day, month or year, so the expense is in the file,
+  // counted by nothing, and visible on no screen - money that has vanished
+  // without being deleted.
+  function cleanDate(value) {
+    const str = typeof value === 'string' ? value.trim().slice(0, 10) : '';
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(str)) return '';
+    const [y, m, d] = str.split('-').map(Number);
+    if (m < 1 || m > 12 || d < 1 || d > 31) return '';
+    const probe = new Date(Date.UTC(y, m - 1, d));
+    // Catches 31 April and 29 February in a common year, which Date would
+    // otherwise roll forward into the next month.
+    if (probe.getUTCMonth() !== m - 1 || probe.getUTCDate() !== d) return '';
+    return str;
+  }
+
+  function normalizeExpense(input) {
+    // A null or a bare string here used to throw, which matters because this
+    // runs over whatever the sheet sends back: one bad row would take down the
+    // whole merge, and sync would fail with a TypeError until someone found the
+    // row by hand. An unusable record should cost that record, nothing more -
+    // it comes out with no date, and every caller already drops those.
+    const e = (input && typeof input === 'object') ? input : {};
     const amountMinor = Number.isInteger(e.amountMinor)
-      ? e.amountMinor
+      ? cleanMinor(e.amountMinor)
       : e.amountMinor != null
-        ? Math.round(Number(e.amountMinor) || 0)
-        : toMinor(e.amount);
+        ? cleanMinor(e.amountMinor)
+        : cleanMinor(toMinor(e.amount));
     const createdAt = typeof e.createdAt === 'string' ? e.createdAt : '';
     return {
       id: Number(e.id) || 0,
       uid: typeof e.uid === 'string' && e.uid ? e.uid : newUid(),
-      date: typeof e.date === 'string' ? e.date : '',
-      amountMinor: Math.max(0, amountMinor),
+      date: cleanDate(e.date),
+      amountMinor,
       // The id is kept verbatim even if no such category exists right now -
       // silently rewriting it to 'other' would rewrite the user's history.
       // getCategoriesForDisplay() surfaces any such orphan instead.
       category: typeof e.category === 'string' && e.category.trim() ? e.category.trim() : 'other',
-      note: typeof e.note === 'string' ? e.note : '',
+      // 200 because that is what server/Code.gs stores. Any longer and a note
+      // arriving from a CSV is one length here and another on the sheet, which
+      // is a difference no screen shows and nothing ever reconciles.
+      note: typeof e.note === 'string' ? e.note.slice(0, 200) : '',
       createdAt,
       // Deletes are kept as tombstones so they can propagate to other devices;
       // every read path filters them out.
@@ -175,6 +217,7 @@ const Store = (() => {
       updatedAt: stamp,
     });
     if (record.amountMinor <= 0) throw new Error('Enter an amount greater than zero.');
+    if (!record.date) throw new Error('Pick a date for this expense.');
     data.expenses.push(record);
     save(data);
     return record;
@@ -192,6 +235,7 @@ const Store = (() => {
       updatedAt: nowIso(),
     });
     if (merged.amountMinor <= 0) throw new Error('Enter an amount greater than zero.');
+    if (!merged.date) throw new Error('Pick a date for this expense.');
     data.expenses[idx] = merged;
     save(data);
     return merged;

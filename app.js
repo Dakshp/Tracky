@@ -2,7 +2,7 @@
 // two are what tell a fixed build apart from a cached one. Where a release only
 // rewrites visible copy, the copy itself is the tell, so this may hold while
 // CACHE takes a suffix instead.
-const APP_VERSION = 25;
+const APP_VERSION = 26;
 
 const state = {
   date: todayStr(),
@@ -1563,6 +1563,16 @@ function openSheet(id = null) {
 
 function closeSheet() {
   state.editingId = null;
+  // The typed amount has to be cleared HERE, not only when the sheet next
+  // opens. Left standing, a second tap on Save books the same amount again -
+  // and a phone delivers a second tap readily, because the frame where the
+  // sheet is closing still has the button under the finger. That is a
+  // duplicate expense from an ordinary impatient tap, and nothing on screen
+  // afterwards says which of the two was the mistake.
+  state.amount = '0';
+  state.editingId = null;
+  el('noteInput').value = '';
+  el('sheetSave').disabled = true;
   el('sheetBackdrop').classList.add('hidden');
 }
 
