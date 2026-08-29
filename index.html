@@ -66,15 +66,18 @@
 
   <!-- ============ TODAY ============ -->
   <section class="screen" id="screen-today">
-    <header class="app-header">
-      <button class="nav-arrow" id="prevDay" aria-label="Previous day">&#8249;</button>
-      <button class="date-title compact-title" id="dateTitle" aria-label="Pick a date">Today</button>
-      <button class="nav-arrow" id="nextDay" aria-label="Next day">&#8250;</button>
-      <input type="date" id="datePicker" aria-label="Choose date">
-    </header>
-
     <div class="scroll-area">
-      <h1 class="large-title" id="dayLargeTitle">Today</h1>
+      <!-- The date controls live in the content, not in a bar. They belong to
+           the day being shown, so they scroll away with its title rather than
+           staying pinned to the top of the screen forever. -->
+      <div class="title-row">
+        <h1 class="large-title" id="dayLargeTitle">Today</h1>
+        <div class="title-actions">
+          <button class="nav-arrow" id="prevDay" aria-label="Previous day">&#8249;</button>
+          <button class="nav-arrow" id="nextDay" aria-label="Next day">&#8250;</button>
+        </div>
+        <input type="date" id="datePicker" aria-label="Choose date">
+      </div>
       <div class="hero-card">
         <span class="hero-label">Spent this day</span>
         <span class="hero-amount" id="dayTotal">0</span>
@@ -108,10 +111,6 @@
          show the selected period, which meant tapping "Stats" landed you on a
          screen titled "Today" - the same word the Today screen already had at
          the top. The period moved down to the card it actually describes. -->
-    <header class="app-header">
-      <span class="date-title compact-title">Stats</span>
-    </header>
-
     <div class="scroll-area">
       <h1 class="large-title">Stats</h1>
       <!-- One filter row, above everything it scopes. -->
@@ -211,8 +210,6 @@
 
   <!-- ============ SETTINGS ============ -->
   <section class="screen hidden" id="screen-settings">
-    <header class="app-header"><span class="date-title compact-title">Settings</span></header>
-
     <div class="scroll-area">
       <h1 class="large-title">Settings</h1>
       <div class="section-head"><h2>Budget</h2></div>

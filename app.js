@@ -2,7 +2,7 @@
 // two are what tell a fixed build apart from a cached one. Where a release only
 // rewrites visible copy, the copy itself is the tell, so this may hold while
 // CACHE takes a suffix instead.
-const APP_VERSION = 27;
+const APP_VERSION = 28;
 
 const state = {
   date: todayStr(),
@@ -220,7 +220,6 @@ function onHorizontalSwipe(target, { onSwipe, onDrag, threshold = 45, owner = tr
 // ---------- Today screen ----------
 
 function renderToday() {
-  el('dateTitle').textContent = formatDayTitle(state.date);
   el('dayLargeTitle').textContent = formatDayTitle(state.date);
   el('datePicker').value = state.date;
 
@@ -2481,21 +2480,7 @@ function renderAll() {
 
 // ---------- Init ----------
 
-// The large title fades out and the compact one in as the content passes under
-// the bar, so exactly one of the two is legible at any moment.
-function watchScroll() {
-  document.querySelectorAll('.screen').forEach((screen) => {
-    const area = screen.querySelector('.scroll-area');
-    if (!area) return;
-    const sync = () => screen.classList.toggle('scrolled', area.scrollTop > 22);
-    area.addEventListener('scroll', sync, { passive: true });
-    sync();
-  });
-}
-
 function init() {
-  watchScroll();
-
   // Swipe between tabs, the way a photo feed pages between them. Attached to
   // each screen, but standing down whenever the drag started on something that
   // owns horizontal gestures of its own - the chart, the calendar, the headline

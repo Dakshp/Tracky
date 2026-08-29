@@ -55,13 +55,6 @@
      ground than a solid card. Darker than --muted by exactly enough to keep the
      tab labels above 4.5:1 with a white expense row blurred behind them. */
   --glass-ink-muted: #5e5e6c;
-  /* The nav bar is its own material. The tab bar is an object floating over the
-     page and earns a rim and a shadow; the nav bar is chrome fused to the top
-     edge of the screen, so it gets the blur and a single hairline and nothing
-     else. Sharing one treatment gave it a border down all four sides and a drop
-     shadow, which read as a raised panel - a look iOS left behind years ago. */
-  --header-fill: rgba(255, 255, 255, .72);
-  --header-hairline: rgba(60, 60, 67, .18);
 
   /* One hue per category. Given as numbered slots so a category stores an index
      and the theme decides the lightness - the same colour needs to be deeper on
@@ -113,11 +106,6 @@
   /* Close to the page, not a grey slab on it. At the old lightness this sat at
      roughly rgb(33,33,43) over a true-black page, which is a visible rectangle
      rather than the page seen through something. */
-  --header-fill: rgba(20, 20, 23, .78);
-  /* With the fill this close to a true-black page, the hairline is doing all
-     the separating, so it has to be a shade stronger than the ones between
-     rows inside a card. */
-  --header-hairline: rgba(255, 255, 255, .16);
   --glass-rim-top: rgba(255, 255, 255, .50);
   --glass-rim-bottom: rgba(255, 255, 255, .04);
   --glass-hairline: rgba(255, 255, 255, .14);
@@ -137,7 +125,6 @@
 
 /* One place to apply the material, so every glass surface stays consistent. */
 .glass,
-.screen.scrolled .app-header,
 .tabbar {
   background: var(--glass-fill);
   -webkit-backdrop-filter: var(--glass-blur);
@@ -150,7 +137,6 @@
    land and fading away underneath. Painted with a masked pseudo-element rather
    than `border`, so it can be a gradient rather than one flat colour. */
 .glass::after,
-.screen.scrolled .app-header::after,
 .tabbar::after {
   content: '';
   position: absolute;
@@ -165,34 +151,15 @@
   pointer-events: none;
 }
 
-/* The nav bar keeps the material and loses the object: no lift, and the rim
-   becomes one hairline along the bottom instead of a border round all four
-   sides. A bar welded to the top of the screen has no left or right edge to
-   catch light on, and drawing one anyway is what made it look like a separate
-   block laid over the app. */
-.screen.scrolled .app-header {
-  background: var(--header-fill);
-  box-shadow: none;
-}
-.screen.scrolled .app-header::after {
-  inset: auto 0 0 0;
-  height: 1px;
-  padding: 0;
-  border-radius: 0;
-  background: var(--header-hairline);
-  -webkit-mask: none;
-  mask: none;
-}
-
 /* Two ways the blur can be absent: the engine lacks it, or the reader has asked
    iOS to reduce transparency. Both end up fully opaque rather than leaving a
    see-through panel with text showing through the labels. */
 @supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
-  .glass, .screen.scrolled .app-header, .tabbar { background: var(--surface); }
+  .glass, .tabbar { background: var(--surface); }
 }
 
 @media (prefers-reduced-transparency: reduce) {
-  .glass, .screen.scrolled .app-header, .tabbar {
+  .glass, .tabbar {
     background: var(--surface);
     -webkit-backdrop-filter: none;
     backdrop-filter: none;
@@ -260,50 +227,30 @@ button {
   flex-direction: column;
 }
 
-/* At rest the bar is nothing but its buttons - no fill, no rim, no shadow. An
-   empty glass strip across the top of a screen that has a large title right
-   under it is a bar with no job. It materialises only once content is passing
-   beneath it, which is the moment it starts doing one. */
-.app-header {
-  position: absolute;
-  transition: background .2s ease, box-shadow .2s ease;
-  top: 0;
-  left: 0;
-  right: 0;
-  z-index: 10;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 4px;
-  padding: calc(env(safe-area-inset-top) + 10px) 16px 12px;
-}
-
-.date-title {
-  flex: 1;
-  text-align: center;
-  font-size: var(--t-head);
-  font-weight: 600;
-  letter-spacing: -.01em;
-  padding: 6px;
-}
-
 /* ---------- Large title ----------
-   iOS opens a screen with the title set large in the content, and collapses it
-   into the bar as you scroll. It is what makes the top of an Apple screen feel
-   like a place rather than a strip of chrome. */
+   The title lives in the content and scrolls away with it. There is no bar for
+   it to collapse into: a strip of chrome pinned across the top, with a fill and
+   an edge, is a decade-old shape, and the tab bar already answers "which screen
+   am I on" without one. What is left at the top of a screen is the title, the
+   controls that belong to it, and the page. */
 .large-title {
   font-size: var(--t-large);
   font-weight: 700;
   letter-spacing: -.028em;
   margin: 0 4px 14px;
-  transition: opacity .18s ease;
 }
-/* The compact title in the bar is the mirror image: hidden until the large one
-   has scrolled away, so exactly one of the two is ever legible. */
-.app-header .date-title,
-.app-header .compact-title { transition: opacity .18s ease; }
-.screen:not(.scrolled) .app-header .compact-title { opacity: 0; }
-.screen.scrolled .large-title { opacity: 0; }
+/* The title row holds whatever belongs to the screen's subject - on Today, the
+   arrows that change which day it is. They sit with the title because that is
+   what they act on, and they scroll away with it. */
+.title-row {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 14px;
+}
+.title-row .large-title { margin: 0; flex: 1; min-width: 0; }
+.title-actions { display: flex; gap: 2px; flex: none; }
 
 .nav-arrow {
   width: 38px;
@@ -322,14 +269,30 @@ button {
    system picker - far better than building a calendar by hand. */
 #datePicker {
   position: absolute;
-  left: 50%;
-  transform: translateX(-50%);
-  top: calc(env(safe-area-inset-top) + 10px);
-  width: 140px;
-  height: 36px;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 62%;
   opacity: 0;
   border: none;
   background: none;
+}
+
+/* With no bar up there, content scrolling up would run straight into the clock
+   and the battery. This fades it out over the notch instead: page colour at the
+   very top, transparent by the time it clears the safe area. In both themes it
+   is the same colour as the page, so it is invisible until something scrolls
+   under it - which is the point. A hard cut would look like a bar again. */
+.screen::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: calc(env(safe-area-inset-top) + 18px);
+  z-index: 5;
+  pointer-events: none;
+  background: linear-gradient(var(--bg) 55%, transparent);
 }
 
 .scroll-area {
@@ -339,10 +302,10 @@ button {
      handed to the browser's back/forward swipe, which slides the whole page. */
   overscroll-behavior-x: none;
   -webkit-overflow-scrolling: touch;
-  /* Top padding clears the floating header, bottom padding the tab bar and the
-     add button, so nothing is ever stranded underneath them - while the content
-     itself still passes beneath the glass, which is what makes it read as glass. */
-  padding: calc(env(safe-area-inset-top) + 72px) 16px calc(env(safe-area-inset-bottom) + 184px);
+  /* There is no bar at the top any more, so the top padding only has to clear
+     the notch and give the title air. The bottom still clears the tab bar and
+     the add button, which do float. */
+  padding: calc(env(safe-area-inset-top) + 22px) 16px calc(env(safe-area-inset-bottom) + 184px);
 }
 
 /* ---------- Cards ---------- */
