@@ -644,15 +644,29 @@ icon into its own squircle and Android into whatever shape the launcher uses, so
 rounding the corners here would round an already-rounded shape and leave
 transparent notches at the edges of the result.
 
-The maskable one draws its glyph smaller, because its crop is unknown and can be
+The maskable one draws the mark smaller, because its crop is unknown and can be
 a full circle: everything inked has to sit inside the middle 80%. The suite
 measures the actual ink bounding box against that circle rather than trusting the
 margin to be right.
 
-It also caught a bug in the generator itself: `letter-spacing` is applied after
-the last character as well as between characters, so centring a one-letter line
-with it left the glyph 5px off-centre at 512 — invisible until a launcher crop
-takes an uneven bite.
+**The mark is geometry, not a font glyph.** The first attempt at the recolour set
+a `T` in the system font, which lost the rounded stem and — more to the point —
+the **dot beneath it**. Those two are what make it a mark rather than a letter.
+It is now rebuilt from proportions measured off the original artwork, and the
+suite asserts the structure: two separate shapes, the lower one round, centred
+under the stem, with the stem-to-bar ratio of the original. Nothing about "is it
+512 square" or "is it black" noticed the dot going missing.
+
+Measuring it is worth doing properly. A span read near the end of a rounded shape
+comes back narrower than the shape is, which is how the rebuild first came out
+with a stem three-quarters of its real width; widths are taken at mid-height. The
+finished file was checked against the original by comparing inked pixels with
+colour ignored — 1.2% of the mark differs, which is the antialiasing.
+
+The generator had a bug of its own, too: `letter-spacing` is applied after the
+last character as well as between characters, so centring a one-letter line with
+it left the glyph 5px off-centre at 512 — invisible until a launcher crop takes
+an uneven bite.
 
 ## Backing up
 
