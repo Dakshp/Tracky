@@ -668,6 +668,24 @@ last character as well as between characters, so centring a one-letter line with
 it left the glyph 5px off-centre at 512 — invisible until a launcher crop takes
 an uneven bite.
 
+### Getting a changed icon onto a phone
+
+Two separate caches stand in the way, and clearing only one of them looks like
+the change did not work.
+
+**iOS reads the icon URL once**, when the app is added to the home screen, and
+then never again. There is no refresh: the app has to be **removed from the home
+screen and re-added**. Nothing the page does at runtime can change the icon of an
+app already installed.
+
+**And re-adding only helps if Safari does not serve the old PNG from its own HTTP
+cache.** GitHub Pages sends a `max-age`, so it will. Every reference therefore
+carries a `?v=` — in `index.html`, in `manifest.webmanifest`, and in `sw.js`'s
+`SHELL`, which caches by exact URL and would otherwise store the icon under a URL
+the page never asks for. Bump that string whenever the artwork changes; a check
+asserts all three agree, since a mismatch is invisible until someone re-adds the
+app and gets the previous icon back.
+
 ## Backing up
 
 Your data lives only on the device. Before switching phones, clearing browser

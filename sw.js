@@ -2,7 +2,7 @@
 // Bump CACHE whenever app files change - the old cache is then dropped. It
 // usually tracks app.js's APP_VERSION, but it has to move even when the
 // visible version deliberately does not, so it carries its own suffix.
-const CACHE = 'tracky-v26-2';
+const CACHE = 'tracky-v26-3';
 const SHELL = [
   './',
   './index.html',
@@ -12,9 +12,9 @@ const SHELL = [
   './csv.js',
   './sync.js',
   './manifest.webmanifest',
-  './icons/icon-192.png',
-  './icons/icon-512.png',
-  './icons/icon-maskable-512.png',
+  './icons/icon-192.png?v=26',
+  './icons/icon-512.png?v=26',
+  './icons/icon-maskable-512.png?v=26',
 ];
 
 self.addEventListener('install', (event) => {
