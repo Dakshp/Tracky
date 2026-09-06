@@ -552,7 +552,20 @@ it on both sides, is most of what makes it read as glass laid over the app rathe
 than part of the frame. So it is an object — four edges to catch light on and
 something underneath to cast onto — and it keeps its specular rim and its lift.
 
-**The selected tab sits on its own lighter pane.** That was removed once too, on
+**Which tab you are on is carried by three signals, not one.** The pane behind
+it, the ink of its label, and its weight. That is not belt-and-braces: the bar is
+translucent, so a pane can only ever be a shade against a ground that moves, and
+asking it to do the whole job is exactly how the light theme ended up with a
+white pane on whitish glass measuring **1.01:1** — present in the DOM and absent
+on the screen. Dark was little better at 1.15:1, the two inks differed by 1.50:1,
+and both weights were 550, so nothing was doing the work.
+
+Now: pane ~1.48:1, ink 2.9:1 light and 2.5:1 dark, weight 700 against 550. And
+**which way the pane goes is decided by the bar, not by convention** — lighter
+than its ground on dark, darker on light, because a white pane on white glass is
+not a pane.
+
+**The selected tab sits on its own pane.** That was removed once too, on
 the reasoning that Apple marks selection by colour alone. True of the old tab
 bar; not true of the floating one, where the reference marks it with exactly this
 pane. It also earns its place on legibility, since colour alone is a weak signal

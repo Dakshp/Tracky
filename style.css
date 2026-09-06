@@ -9,7 +9,11 @@
   /* Ink for text sitting ON the accent. White works on the light accent and
      fails badly on the dark one, which is far paler - see the dark block. */
   --on-primary: #ffffff;
-  --tab-pill: rgba(255, 255, 255, .72);
+  /* Darker than its bar, not lighter. A white pane on the light theme's whitish
+     glass composited to within 1% of its neighbours - the selection was there in
+     the DOM and absent on the screen. Which way it goes is decided by the bar,
+     not by convention. */
+  --tab-pill: rgba(56, 56, 84, .30);
   /* The raised thumb in a segmented control. It cannot just be --surface: on
      dark that is #1c1c1e, and the track (--fill-soft over a black page)
      composites to exactly the same rgb(28,28,30), so the selection vanished
@@ -113,7 +117,7 @@
   /* Dark mode lifts the accent to #8f96ff so it reads against black, which
      leaves white text on it at 2.63:1. Near-black on it is 7.5:1. */
   --on-primary: #14141a;
-  --tab-pill: rgba(255, 255, 255, .13);
+  --tab-pill: rgba(255, 255, 255, .24);
   --segment-thumb: #6e6e73;
   --danger: #ff6b6b;
   /* True black, not dark grey. On the OLED panel in every iPhone since the X
@@ -132,7 +136,7 @@
      glass catches light. Matching the background is what made it read as a
      flat slab. */
   --glass-fill: rgba(138, 138, 180, .12);
-  --glass-ink-muted: #d2d2e0;
+  --glass-ink-muted: #a2a2b4;
   --glass-halo: rgba(0, 0, 0, .92);
   --glass-rim-top: rgba(255, 255, 255, .62);
   --glass-rim-bottom: rgba(255, 255, 255, .05);
@@ -1275,7 +1279,7 @@ button {
    pale indigo in dark mode: the two together measured 3.66:1. The reference
    does the same thing for the same reason - its selected glyph is plain white
    on a lighter pill, not a tinted one. */
-.tab.active { color: var(--text); }
+.tab.active { color: var(--text); font-weight: 700; }
 .tab:active { opacity: .55; }
 /* Stroked SVG rather than a Unicode glyph: consistent weight across platforms,
    and it inherits the tab's colour on selection. */
