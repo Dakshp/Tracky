@@ -2,7 +2,7 @@
 // two are what tell a fixed build apart from a cached one. Where a release only
 // rewrites visible copy, the copy itself is the tell, so this may hold while
 // CACHE takes a suffix instead.
-const APP_VERSION = 41;
+const APP_VERSION = 42;
 
 const state = {
   date: todayStr(),
@@ -775,13 +775,30 @@ function moveCalendarFrame(delta) {
  * left off; it is on every other figure on the screen, and inside a cell it
  * costs width the number needs more.
  */
+/**
+ * The figure as it appears inside a calendar cell or over a chart bar: rounded
+ * to whole rupees, and carrying the currency symbol.
+ *
+ * The symbol was left off at first on the grounds that a grid of thirty numbers
+ * in one currency does not need it thirty times. That was wrong in practice - a
+ * bare "120" under a date reads as a count of something before it reads as
+ * money, and the whole point of the cell is that it is an amount. The symbol is
+ * one narrow glyph and it settles the question at a glance.
+ */
 function cellAmount(minor) {
   const s = Store.getSettings();
   const value = Math.round((minor || 0) / Store.MINOR_PER_MAJOR);
   try {
-    return new Intl.NumberFormat(s.locale, { maximumFractionDigits: 0 }).format(value);
+    return new Intl.NumberFormat(s.locale, {
+      style: 'currency',
+      currency: s.currency,
+      // Whole units only. Paise in a 43px cell would cost more width than they
+      // tell anyone at this zoom; the full figure is a tap away.
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 0,
+    }).format(value);
   } catch (err) {
-    return String(value);
+    return `${currencySymbol()}${value}`;
   }
 }
 
@@ -848,6 +865,8 @@ function buildCalGrid(month, selected, categoryId) {
       sum.className = 'cal-sum';
       if (!amount) sum.classList.add('is-zero');
       sum.textContent = cellAmount(amount);
+      // Five figures plus a symbol and a separator is wider than a day cell.
+      if (sum.textContent.length > 5) sum.classList.add('is-long');
       cell.appendChild(sum);
     }
 
@@ -1354,10 +1373,10 @@ function buildChartSvg(data, interactive) {
       // their numbers in exactly the same place, which said the two were
       // somehow equivalent.
       const text = cellAmount(s.totalMinor);
-      // A column is about 41 units wide. Indian grouping makes a lakh eight
-      // characters ("1,25,000"), which would run into its neighbours at full
-      // size, so long figures step down rather than collide.
-      const size = text.length > 7 ? 8 : text.length > 5 ? 9 : selected ? 11 : 10;
+      // A column is about 41 units wide. Indian grouping makes a lakh nine
+      // characters with the symbol ("₹1,25,000"), which would run into its
+      // neighbours at full size, so long figures step down rather than collide.
+      const size = text.length > 8 ? 8 : text.length > 6 ? 9 : selected ? 11 : 10;
       const label = s.totalMinor > 0
         ? `<text x="${cx.toFixed(1)}" y="${Math.max(y - 5, 9).toFixed(1)}" text-anchor="middle"
                  font-size="${size}"
@@ -2791,11 +2810,32 @@ function clearEverything() {
 // Tab order, left to right. The swipe walks this list; the tab bar shows it.
 const SCREENS = ['stats', 'today', 'settings'];
 
+/**
+ * Slides the selection pill onto a tab. Measured from the live boxes rather
+ * than assuming a fixed tab width, so it stays true if a label or the bar's
+ * padding ever changes.
+ */
+function moveTabPill(name, animate = true) {
+  const pill = document.querySelector('.tab-pill');
+  const tab = document.querySelector(`.tab[data-screen="${name}"]`);
+  if (!pill || !tab) return;
+  const bar = tab.parentElement.getBoundingClientRect();
+  const box = tab.getBoundingClientRect();
+  // A hidden bar measures zero; moving the pill to 0 then would leave it parked
+  // at the left edge and animating across the first time the bar is shown.
+  if (!box.width) return;
+  if (!animate) pill.classList.add('no-anim');
+  pill.style.width = `${box.width}px`;
+  pill.style.transform = `translateX(${box.left - bar.left}px)`;
+  if (!animate) requestAnimationFrame(() => requestAnimationFrame(() => pill.classList.remove('no-anim')));
+}
+
 function showScreen(name, direction) {
   document.querySelectorAll('.screen').forEach((s) => s.classList.add('hidden'));
   const next = el(`screen-${name}`);
   next.classList.remove('hidden');
   document.querySelectorAll('.tab').forEach((t) => t.classList.toggle('active', t.dataset.screen === name));
+  moveTabPill(name);
   // A new screen starts at its top, so the bar starts at full height. Without
   // this it would arrive shrunk because the screen you left was scrolled.
   document.body.classList.remove('bar-shrunk');
@@ -3022,6 +3062,16 @@ function init() {
 
   renderToday();
   applyQuickAdd();
+
+  // The pill starts under whichever tab is marked active in the markup, and it
+  // must arrive there rather than slide there. Re-placed on resize because its
+  // offset is measured in pixels, and a rotation changes them.
+  const startTab = document.querySelector('.tab.active') || document.querySelector('.tab');
+  moveTabPill(startTab.dataset.screen, false);
+  window.addEventListener('resize', () => {
+    const active = document.querySelector('.tab.active');
+    if (active) moveTabPill(active.dataset.screen, false);
+  });
 
   // Pull anything logged elsewhere (another device, or a shortcut writing
   // straight to the sheet) whenever the app is opened or returned to.

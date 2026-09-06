@@ -453,6 +453,22 @@ row of a month specifically.
 Weekday initials appear over the day grid only. Weeks are rows and months are
 their own cells, so a row of initials over either would be labelling nothing.
 
+### Every figure says what it is
+
+The cell figures were bare numbers — `120` under a date — on the reasoning that
+thirty amounts in one currency do not need the symbol thirty times. In practice a
+bare number under a date reads as a *count* of something before it reads as
+money, and the amount is the whole point of the cell. So cells and chart labels
+both carry **₹** now, whole rupees, no paise.
+
+That cost width the cells did not obviously have — and finding it turned up a
+long-standing bug. A cell is a `<button>`, and the browser's own default
+`padding: 1px 6px` was never reset, so **12px of a 43px cell** had been going to
+padding nobody asked for; a five-figure day was already being clipped before the
+symbol was added. With the padding down to 2px and a size step-down for figures
+longer than five characters, a ₹13,686 day fits. Checked against a lakh-a-day
+file at every zoom: nothing clipped, and no two chart labels overlap.
+
 ### One height, divided
 
 Cells used to be sized by **aspect ratio**, which made the grid's height follow
@@ -683,6 +699,31 @@ lightens the ground under the label, and the accent is a pale indigo in dark
 mode; measured together they came to 3.66:1. The reference does the same thing
 for the same reason — its selected glyph is plain white on a lighter pill, not a
 tinted one. Measured after: 9.5:1.
+
+### One pane that travels
+
+The pane started as a `::before` on each tab, cross-fading as the selection
+changed. Two things were wrong with that.
+
+It **sat low in the bar.** The pseudo-element was inset 4px vertically and 3px
+horizontally, which looks even in the stylesheet — but the bar has 5px of padding
+of its own, so the horizontal gap was really 8px against a vertical 4px. Twice as
+much space at the ends as above and below reads, inside a capsule, as the pane
+having slipped downwards. There is now **one** pane positioned in the bar's own
+coordinates with a single 5px inset on all four sides: a 25px capsule concentric
+inside a 30px one.
+
+And a cross-fade **tells you where the selection landed but not that it moved.**
+The three screens are meant to feel like a strip you travel along — it is what
+the swipe gesture says — so the pane slides between tabs instead, on the same
+easing as everything else that moves in the app. It is a `transform`, not a
+`left`: animating position would re-blur the glass behind the bar on every frame,
+which is the fault the shrink animation had.
+
+Its offset is measured from the live tab boxes rather than assuming a tab is
+98px, so a label change or a rotation cannot leave it out of step, and it is
+re-placed without animating on load and on resize — otherwise it would slide in
+from the left edge the first time you opened the app.
 
 ### Shrinking out of the way
 

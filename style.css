@@ -739,6 +739,10 @@ button {
 
 .cal-day {
   gap: 1px;
+  /* A cell is a <button>, and the browser's own 1px 6px was never reset - so
+     12px of a 43px cell went to padding nobody asked for, and a five-figure day
+     was quietly clipped. 2px is enough to keep a glyph off the corner rounding. */
+  padding: 0 2px;
   border-radius: 11px;
   display: grid;
   place-items: center;
@@ -831,8 +835,9 @@ button {
    same weight and the same colour, which left two numbers in one small cell with
    nothing saying which was which. */
 .cal-num { font-size: 13px; font-weight: 700; line-height: 1.05; }
-/* The figure, not just the shade. Short form - "420", "1.5K" - because a cell is
-   about 44px wide and a full "₹1,500.00" would have to shrink past reading. */
+/* The figure, not just the shade. Whole rupees with the symbol - "₹420" - and
+   no paise: a cell is about 43px wide and a full "₹1,500.00" would have to
+   shrink past reading. */
 .cal-sum {
   font-size: 11px;
   /* A five-figure day is rare but must not blow the cell open. */
@@ -853,6 +858,10 @@ button {
 /* Quieter than a real amount, but still a figure someone can read: the ask was
    to see a number every day, and a 0 nobody can make out is not one. */
 .cal-sum.is-zero { opacity: .55; font-weight: 500; }
+/* A day over ₹10,000 is rare, and the figure has to step down rather than be
+   cut off - the chart does the same thing for the same reason. Only day cells
+   are tight enough to need it; weeks and months have room at full size. */
+.cal-grid.is-days .cal-sum.is-long { font-size: 9.5px; letter-spacing: -.05em; }
 
 /* Today is its date in the accent colour, the selection is a ring around the
    cell. Two different marks, so "where I am" and "what I am looking at" never
@@ -1349,19 +1358,37 @@ button {
    reasoning that Apple marks selection by colour alone - which was true of the
    old tab bar and is not true of the floating one, where the reference marks it
    with exactly this. It also earns its place on legibility: colour alone is a
-   weak signal for anyone who does not separate these two blues easily. */
-.tab::before {
-  content: '';
+   weak signal for anyone who does not separate these two blues easily.
+
+   ONE pill that slides, not one per tab fading in and out. Two reasons.
+   Selection that cross-fades tells you where it landed but not that it moved,
+   and the tab bar is the one control in the app where the three screens are
+   meant to feel like a strip you travel along - the same thing the swipe
+   gesture says. And a pill per tab was inset 4px vertically but sat 8px in from
+   the bar's end, because the bar's own 5px padding stacked on top of the 3px
+   inset: it read as sitting low in the bar rather than centred in it. A single
+   pill positioned in the bar's own coordinates has one inset, 5px on all four
+   sides, so it is concentric with the capsule around it - 25px radius inside a
+   30px one. */
+.tab-pill {
   position: absolute;
-  inset: 4px 3px;
-  border-radius: calc(var(--bar) / 2);
+  top: 5px;
+  bottom: 5px;
+  left: 0;
+  /* Width and offset are set from the live tab boxes in app.js, so the pill
+     cannot drift out of step with a tab that changed size. */
+  width: 0;
+  border-radius: 999px;
   background: var(--tab-pill);
   box-shadow: var(--tab-pill-lift);
-  opacity: 0;
-  transition: opacity .18s ease;
+  /* Transform, not left: composited, so the slide does not re-blur the glass
+     behind the bar on every frame - the same reason the shrink is a transform. */
+  transition: transform .34s cubic-bezier(.32, .72, 0, 1);
   pointer-events: none;
 }
-.tab.active::before { opacity: 1; }
+/* The first placement, before any tab has been tapped, must not animate in from
+   the left edge. app.js drops this class one frame after positioning it. */
+.tab-pill.no-anim { transition: none; }
 /* Above the pane, not under it. */
 .tab-icon, .tab span { position: relative; z-index: 1; }
 /* Full-contrast ink rather than the accent, now that the pane carries the
@@ -1407,7 +1434,7 @@ body.bar-shrunk .fab {
 
 /* Nobody asked for the furniture to move while they are reading. */
 @media (prefers-reduced-motion: reduce) {
-  .tabbar, .tab, .tab-icon { transition: none; }
+  .tabbar, .tab, .tab-icon, .tab-pill { transition: none; }
 }
 
 /* ---------- Add sheet ---------- */
