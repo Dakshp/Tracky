@@ -369,6 +369,31 @@ const Store = (() => {
     return out;
   }
 
+  /**
+   * A run of years, for the grid at year zoom.
+   *
+   * There is no natural block of years the way twelve months make a year, so the
+   * caller picks the span. Twelve keeps the grid the same shape as the month
+   * one, which is the whole reason it exists.
+   */
+  function getYearlyTotals(startYear, count, categoryId, query) {
+    const terms = queryTerms(query);
+    const labelOf = terms.length ? categoryLabeller() : null;
+    const byYear = {};
+    for (const e of live(load().expenses)) {
+      if (categoryId && e.category !== categoryId) continue;
+      if (terms.length && !matchesQuery(e, terms, labelOf)) continue;
+      const y = e.date.slice(0, 4);
+      byYear[y] = (byYear[y] || 0) + (Number(e.amountMinor) || 0);
+    }
+    const out = [];
+    for (let i = 0; i < count; i++) {
+      const period = String(Number(startYear) + i);
+      out.push({ period, totalMinor: byYear[period] || 0 });
+    }
+    return out;
+  }
+
   function getRecentDays(limit) {
     const byDate = {};
     for (const e of live(load().expenses)) {
@@ -897,6 +922,7 @@ const Store = (() => {
     getDailyTotals,
     getWeeklyTotals,
     getMonthlyTotals,
+    getYearlyTotals,
     getRecentDays,
     periodOf,
     shiftPeriod,

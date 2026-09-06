@@ -802,6 +802,8 @@ button {
   gap: 2px;
 }
 .cal-month .cal-num { font-size: var(--t-sub); }
+/* A four-digit year needs a touch less than a three-letter month. */
+.cal-year .cal-num { font-size: 15px; letter-spacing: -.02em; }
 .cal-month .cal-sum { font-size: 12px; }
 
 .cal-day[data-level="1"] { background: var(--cal-1); }

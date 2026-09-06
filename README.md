@@ -376,8 +376,8 @@ from a cached one, and "it still doesn't work" cannot be answered. Bump
 
 ## The grid
 
-Every zoom below a year has a grid, and it is the same grid: **days in a month,
-weeks in a month, months in a year.**
+**Every** zoom has a grid, and it is the same grid: days in a month, weeks in a
+month, months in a year, years in a block of twelve.
 
 The day grid is already Monday-first, which means **a week is literally a row of
 it** — so the week view keeps the calendar's shape and rhythm rather than turning
@@ -385,8 +385,35 @@ into a list. The cell just grows to the width of the week it stands for, and the
 selection is that whole row with its total on it.
 
 A year of months is the same idea one step out: twelve cells, three across, each
-carrying its month's total, shaded on the same four steps. **Year keeps the chart
-alone**, because a grid of years is not a shape anyone reads.
+carrying its month's total.
+
+**Year gets twelve cells too**, and most of them are empty for anyone who has not
+kept the app for a decade. That is the point rather than an oversight: a switch
+that works on three zooms out of four is one people stop trusting, and the cost
+of the empty grid is a screen nobody looks at twice. There is no natural block of
+twelve years the way twelve months make a year, so blocks are anchored to end at
+the present one — the current year sits in the last cell, where December sits in
+the month grid.
+
+### One page means four different things
+
+A frame is a month of days, a month of weeks, a year of months, or a block of
+twelve years, so paging has to work in the frame's own units. Two bugs came from
+not doing that:
+
+- `moveCalendarFrame` split the selected period as a date unconditionally, which
+  is only true at day and week zoom. At month the period is `YYYY-MM` and at year
+  it is `YYYY`, so the split produced `NaN` and **the page silently refused to
+  move**.
+- "Is there a later frame?" was asked with a string comparison, which answers
+  `false` for a year block and left the arrow disabled at the present when it
+  should not have been. `Number('2026-09')` is `NaN`, and `NaN >= NaN` is false,
+  so the same mistake in reverse stopped the arrow disabling itself at all.
+
+A third came from the week frame specifically: a month's last day usually belongs
+to a week that spills into the *next* month, and a week is framed by the month it
+**ends** in — so paging back landed on the week it started from. It steps to the
+last week that finishes inside the target month instead.
 
 ### Colour does not scale with the area it fills
 

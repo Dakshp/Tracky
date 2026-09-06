@@ -2,7 +2,7 @@
 // two are what tell a fixed build apart from a cached one. Where a release only
 // rewrites visible copy, the copy itself is the tell, so this may hold while
 // CACHE takes a suffix instead.
-const APP_VERSION = 39;
+const APP_VERSION = 40;
 
 const state = {
   date: todayStr(),
@@ -683,6 +683,16 @@ function attachPager(pager, { step, canStep, on }) {
 // judge shades against each other; four levels can be told apart at a glance and
 // each one is a plain sentence - nothing, a little, more, most.
 const CAL_STEPS = 4;
+// Twelve, to match the months. The point of the year grid is that the switch
+// behaves the same at every zoom, and a differently shaped grid would undo it.
+const YEAR_CELLS = 12;
+
+// Year blocks run backwards from the present one, so the current year lands in
+// the last cell the way December does in the month grid.
+function yearBlockStart(selectedYear) {
+  const anchor = Number(todayStr().slice(0, 4)) - (YEAR_CELLS - 1);
+  return String(anchor + Math.floor((Number(selectedYear) - anchor) / YEAR_CELLS) * YEAR_CELLS);
+}
 
 function monthOf(dateStr) {
   return dateStr.slice(0, 7);
@@ -700,22 +710,59 @@ function lastDayOfMonth(month) {
  * 3rd of the next month rather than resetting to the 1st, so the figures below
  * stay about a comparable day instead of jumping somewhere arbitrary.
  */
-function moveCalendarMonth(delta) {
-  const [y, m, d] = compare.period.split('-').map(Number);
-  const target = new Date(Date.UTC(y, m - 1 + delta, 1));
-  const month = target.toISOString().slice(0, 7);
+/**
+ * Page the grid by one frame, and land on a period inside it.
+ *
+ * A frame is a month of days, a month of weeks, a year of months, or a block of
+ * twelve years - so what "one page" means depends on the zoom. This used to
+ * split compare.period as a date unconditionally, which is only true at day and
+ * week zoom: at month the period is YYYY-MM and at year it is YYYY, so the
+ * split produced NaN and the page silently refused to move.
+ *
+ * Nothing has been spent in the future, so a frame past the present one is
+ * refused and the present frame lands on today rather than on its own last cell.
+ */
+function moveCalendarFrame(delta) {
   const today = todayStr();
+  const land = (period) => {
+    compare.period = period;
+    compare.anchor = period;
+    renderCompare();
+  };
 
-  // Nothing has been spent in the future, so a month past this one is refused
-  // outright and the current month stops at today.
+  if (compare.granularity === 'year') {
+    const start = Number(yearBlockStart(compare.period)) + delta * YEAR_CELLS;
+    if (start > Number(yearBlockStart(today.slice(0, 4)))) return;
+    return land(String(Math.min(start + YEAR_CELLS - 1, Number(today.slice(0, 4)))));
+  }
+
+  if (compare.granularity === 'month') {
+    const year = Number(compare.period.slice(0, 4)) + delta;
+    if (year > Number(today.slice(0, 4))) return;
+    const month = year === Number(today.slice(0, 4)) ? today.slice(5, 7) : '12';
+    return land(`${year}-${month}`);
+  }
+
+  // Day and week both page by month. A week is anchored by the month it ends
+  // in, matching how the grid frames it.
+  const from = compare.granularity === 'week' ? shiftDate(compare.period, 6) : compare.period;
+  const [y, m, d] = from.split('-').map(Number);
+  const month = new Date(Date.UTC(y, m - 1 + delta, 1)).toISOString().slice(0, 7);
   if (month > monthOf(today)) return;
-  let day = Math.min(d, lastDayOfMonth(month));
-  let next = `${month}-${String(day).padStart(2, '0')}`;
-  if (next > today) next = today;
 
-  compare.period = next;
-  compare.anchor = next;
-  renderCompare();
+  if (compare.granularity === 'week') {
+    const last = `${month}-${String(lastDayOfMonth(month)).padStart(2, '0')}`;
+    let week = Store.periodOf(last > today ? today : last, 'week');
+    // A month's last day usually belongs to a week that spills into the next
+    // month - and a week is framed by the month it ENDS in, so landing on that
+    // one would page straight back to where we started. Step to the last week
+    // that finishes inside the target month instead.
+    if (shiftDate(week, 6) > last) week = shiftDate(week, -7);
+    return land(week);
+  }
+  let next = `${month}-${String(Math.min(d, lastDayOfMonth(month))).padStart(2, '0')}`;
+  if (next > today) next = today;
+  return land(next);
 }
 
 /**
@@ -886,6 +933,64 @@ function buildWeekGrid(month, selected, categoryId) {
   return grid;
 }
 
+/**
+ * Twelve years, in the same shape as the twelve months.
+ *
+ * Most of these cells are empty for anyone who has not been keeping the app for
+ * a decade, and that is fine: the grid is here so that every zoom answers the
+ * switch the same way. A control that works on three of four zooms is a control
+ * people stop trusting.
+ *
+ * There is no natural block of twelve years the way twelve months make a year,
+ * so the blocks are anchored to end at the present one - the current year sits
+ * in the last cell, where December sits in the month grid.
+ */
+function buildYearGrid(startYear, selected, categoryId) {
+  const thisYear = todayStr().slice(0, 4);
+  const totals = Store.getYearlyTotals(startYear, YEAR_CELLS, categoryId, searchQuery);
+  const max = Math.max(...totals.map((t) => t.totalMinor), 1);
+
+  const grid = document.createElement('div');
+  grid.className = 'cal-grid is-months is-years';
+  grid.setAttribute('role', 'grid');
+  grid.setAttribute('aria-label', `Spending year by year, ${startYear} to ${Number(startYear) + YEAR_CELLS - 1}`);
+
+  for (const { period, totalMinor } of totals) {
+    const future = period > thisYear;
+    const cell = document.createElement('button');
+    cell.type = 'button';
+    cell.className = 'cal-day cal-month cal-year';
+    cell.dataset.date = period;
+    cell.dataset.amount = String(totalMinor);
+    cell.disabled = future;
+    cell.style.setProperty('--fill', future ? '0' : (totalMinor / max).toFixed(3));
+    cell.dataset.level = future ? 'future' : 'bar';
+    if (period === thisYear) cell.classList.add('is-today');
+    if (period === selected) {
+      cell.classList.add('is-selected');
+      cell.setAttribute('aria-current', 'date');
+    }
+
+    const num = document.createElement('span');
+    num.className = 'cal-num';
+    num.textContent = period;
+    cell.appendChild(num);
+
+    if (!future) {
+      const sum = document.createElement('span');
+      sum.className = 'cal-sum';
+      if (!totalMinor) sum.classList.add('is-zero');
+      sum.textContent = cellAmount(totalMinor);
+      cell.appendChild(sum);
+    }
+    cell.setAttribute('aria-label', `${period}: ${
+      future ? 'not yet' : totalMinor > 0 ? formatMoney(totalMinor, { compact: true }) : 'nothing spent'
+    }`);
+    grid.appendChild(cell);
+  }
+  return grid;
+}
+
 /** A year as twelve cells, so a year of months reads the way a month of days does. */
 function buildMonthGrid(year, selected, categoryId) {
   const thisMonth = monthOf(todayStr());
@@ -943,10 +1048,11 @@ function weekAnchor(data) {
 function renderCalendar(data) {
   const card = el('calendarCard');
   const gran = data.granularity;
-  // Every zoom below a year has a grid now: days in a month, weeks in a month,
-  // months in a year. A year of years is not a shape anyone reads, so Year keeps
-  // the chart alone.
-  const hasGrid = gran !== 'year';
+  // Every zoom has a grid: days in a month, weeks in a month, months in a year,
+  // years in a block of twelve. The last one is mostly empty for anyone who has
+  // not kept the app for a decade, and it exists anyway - a switch that works on
+  // three zooms out of four is one people stop trusting.
+  const hasGrid = true;
   // The grid is an alternative to the chart, not a replacement for it. Both
   // answer different questions - the chart shows the run of recent periods, the
   // grid the shape of a whole month or year - so the choice is the reader's, and
@@ -967,13 +1073,27 @@ function renderCalendar(data) {
   if (!showCal) return;
 
   const today = todayStr();
-  // Months page through months; the year of months pages through years.
+  // What one page of the grid holds, and what "the latest page" is.
+  //   day, week  -> a month of them
+  //   month      -> a year of them
+  //   year       -> a block of twelve
   const byMonths = gran === 'month';
-  const unit = byMonths ? monthOf(today).slice(0, 4) : monthOf(today);
-  const frame = byMonths ? data.period.slice(0, 4) : monthOf(weekAnchor(data));
+  const byYears = gran === 'year';
+  const frame = byYears ? yearBlockStart(data.period)
+    : byMonths ? data.period.slice(0, 4)
+      : monthOf(weekAnchor(data));
+  const unit = byYears ? yearBlockStart(today.slice(0, 4))
+    : byMonths ? today.slice(0, 4)
+      : monthOf(today);
 
-  el('calMonth').textContent = byMonths ? frame : formatMonthTitle(frame);
-  el('calNext').disabled = frame >= unit;
+  el('calMonth').textContent = byYears
+    ? `${frame} – ${Number(frame) + YEAR_CELLS - 1}`
+    : byMonths ? frame : formatMonthTitle(frame);
+  // Years compare as numbers; months and days compare as ISO strings. Running a
+  // year block through the string comparison - or a month key through Number() -
+  // silently answers false, and the arrow stops disabling itself at the present.
+  el('calNext').disabled = byYears ? Number(frame) >= Number(unit) : frame >= unit;
+  el('calNote').textContent = `Swipe for other ${byYears ? 'years' : byMonths ? 'years' : 'months'}`;
 
   // Only the day grid has weekday columns. Weeks are rows and months are their
   // own cells, so a row of initials over either would be labelling nothing.
@@ -993,6 +1113,11 @@ function renderCalendar(data) {
   }
 
   fillPager(el('calPager'), (offset) => {
+    if (byYears) {
+      const target = String(Number(frame) + offset * YEAR_CELLS);
+      if (Number(target) > Number(unit)) return null;
+      return buildYearGrid(target, data.period, data.categoryId);
+    }
     if (byMonths) {
       const target = String(Number(frame) + offset);
       if (target > unit) return null;
@@ -1026,10 +1151,11 @@ function renderCalendar(data) {
     .map((c) => Number(c.dataset.amount) || 0)
     .filter((v) => v > 0);
   const dark = document.documentElement.dataset.theme === 'dark';
-  const per = { day: 'a day', week: 'a week', month: 'a month' }[gran];
+  const per = { day: 'a day', week: 'a week', month: 'a month', year: 'a year' }[gran];
+  const span = byYears ? 'in these years' : byMonths ? 'this year' : 'this month';
   el('calScale').textContent = spent.length
     ? `${dark ? 'Brighter' : 'Darker'} means more spent · up to ${formatMoney(Math.max(...spent), { compact: true })} ${per}`
-    : `Nothing spent this ${byMonths ? 'year' : 'month'}`;
+    : `Nothing spent ${span}`;
 }
 
 /**
@@ -1664,8 +1790,8 @@ function initCompareControls() {
     renderCompare();
   });
 
-  el('calPrev').addEventListener('click', () => moveCalendarMonth(-1));
-  el('calNext').addEventListener('click', () => moveCalendarMonth(1));
+  el('calPrev').addEventListener('click', () => moveCalendarFrame(-1));
+  el('calNext').addEventListener('click', () => moveCalendarFrame(1));
 
   el('prevPeriod').addEventListener('click', () => movePeriod(-1));
   el('nextPeriod').addEventListener('click', () => movePeriod(1));
@@ -1682,8 +1808,20 @@ function initCompareControls() {
     on: document.querySelector('#screen-stats .chart-card'),
   });
   attachPager(el('calPager'), {
-    step: moveCalendarMonth,
-    canStep: (dir) => dir < 0 || monthOf(compare.period) < monthOf(todayStr()),
+    step: moveCalendarFrame,
+    // "Is there a later frame?" has to be asked in the frame's own units, or a
+    // year block gets compared as a date string and the strip resists a move it
+    // could have made.
+    canStep: (dir) => {
+      if (dir < 0) return true;
+      const today = todayStr();
+      if (compare.granularity === 'year') {
+        return Number(yearBlockStart(compare.period)) < Number(yearBlockStart(today.slice(0, 4)));
+      }
+      if (compare.granularity === 'month') return compare.period.slice(0, 4) < today.slice(0, 4);
+      const from = compare.granularity === 'week' ? shiftDate(compare.period, 6) : compare.period;
+      return monthOf(from) < monthOf(today);
+    },
     on: el('calendarCard'),
   });
 
