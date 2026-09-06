@@ -566,10 +566,32 @@ tinted one. Measured after: 9.5:1.
 
 ### Shrinking out of the way
 
-It loses **width as well as height**. The bar is sized to its tabs and centred
-rather than stretched between two insets, so dropping the labels narrows it —
-304px down to 190px. Shrinking only the height left a long thin strip across the
-screen, which reads as a rail rather than a control.
+**The shrink is one transform and nothing else moves.**
+
+It was three things at once to begin with: the bar's height, a `min-width` on
+each of the three tabs, and a `max-height` on each of the three labels. Every one
+of those is a layout property, so every frame was a reflow — and worse, resizing
+an element carrying a 44px `backdrop-filter` makes the browser **re-blur what is
+behind it on every frame**. That is the expensive part, and it is why it
+stuttered.
+
+A transform is composited instead: the bar is rasterised once, blur and all, and
+the finished layer is scaled. Nothing re-lays-out and nothing re-blurs. The suite
+pins this directly — the bar's *visual* box must shrink while its **layout box
+stays exactly the same**, which is only true if the change is a transform.
+
+**And it is a gentle step, not a collapse.** The first version dropped to 40px
+tall and 190px wide, shedding a third of its height and a third of its width,
+which reads as a different control appearing rather than the same one easing
+back. It now scales to 88% — 304×60 to 268×53 — and the labels stay, because the
+whole bar scales together and keeps its proportions.
+
+The add button moves on the same curve and the same composited property, so the
+two read as one thing rather than two things that nearly agree.
+
+*What cannot be checked here:* smoothness itself. This environment has no GPU, so
+frame rate is not measurable — what the suite can prove is the structural
+property that makes smoothness possible.
 
 
 Reading a long list, the bar is the least useful thing on screen; on the way back

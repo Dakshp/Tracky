@@ -1107,7 +1107,9 @@ button {
   left: 50%;
   transform: translateX(-50%);
   bottom: calc(env(safe-area-inset-bottom) + var(--bar) + 20px);
-  transition: bottom .22s cubic-bezier(.25, .9, .3, 1);
+  /* Follows the bar with the same curve and the same composited property, so
+     the two move as one thing rather than two things that nearly agree. */
+  transition: transform .3s cubic-bezier(.32, .72, 0, 1);
   width: 66px;
   height: 66px;
   border-radius: 33px;
@@ -1200,12 +1202,8 @@ button {
    like glass laid on the app rather than part of the chrome. */
 .tabbar {
   position: fixed;
-  /* Sized to its tabs and centred, rather than stretched between two insets.
-     Shrinking only the height left a long thin strip across the screen - the
-     bar has to lose width with the labels, or it reads as a rail rather than a
-     control. */
+  /* Sized to its tabs and centred, rather than stretched between two insets. */
   left: 50%;
-  transform: translateX(-50%);
   max-width: calc(100% - 24px);
   bottom: calc(env(safe-area-inset-bottom) + 10px);
   display: flex;
@@ -1214,8 +1212,18 @@ button {
   padding: 0 5px;
   border-radius: calc(var(--bar) / 2);
   z-index: 20;
-  transition: height .22s cubic-bezier(.25, .9, .3, 1),
-              border-radius .22s cubic-bezier(.25, .9, .3, 1);
+  /* The shrink is ONE transform, and nothing else moves.
+     It used to animate height, min-width on three children, and max-height on
+     three labels at once - every one of them a layout property, and every frame
+     therefore a reflow. Worse, resizing an element that carries a 44px
+     backdrop-filter makes the browser re-blur what is behind it on every single
+     frame, which is the expensive part and the reason it stuttered.
+     A transform is composited: the bar is rasterised once, blur and all, and
+     the finished layer is scaled. Nothing re-lays-out and nothing re-blurs. */
+  transform: translateX(-50%);
+  transform-origin: bottom center;
+  transition: transform .3s cubic-bezier(.32, .72, 0, 1);
+  will-change: transform;
 }
 
 .tab {
@@ -1226,7 +1234,7 @@ button {
   position: relative;
   padding: 0;
   border-radius: 22px;
-  transition: min-width .22s cubic-bezier(.25, .9, .3, 1), color .18s ease;
+  transition: color .18s ease;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -1278,34 +1286,34 @@ button {
   width: var(--bar-icon);
   height: var(--bar-icon);
   display: block;
-  transition: width .22s cubic-bezier(.25, .9, .3, 1), height .22s cubic-bezier(.25, .9, .3, 1);
 }
 
 /* ---------- The bar shrinking out of the way ----------
    Reading a long list, the bar is the least useful thing on screen; on the way
-   back up it is the most. So it gives up its labels and some height while you
-   are moving away from the top, and takes them back the moment you turn around.
+   back up it is the most. So it draws back a little while you are moving away
+   from the top, and comes forward again the moment you turn around.
 
    It shrinks rather than hides. Vanishing chrome makes people hunt for it, and
-   this bar is the only way between the three screens. */
-body.bar-shrunk {
-  --bar: 40px;
-  --bar-icon: 21px;
-}
-.tab span {
-  max-height: 14px;
-  overflow: hidden;
-  transition: max-height .22s cubic-bezier(.25, .9, .3, 1), opacity .16s ease;
-}
-body.bar-shrunk .tab span {
-  max-height: 0;
-  opacity: 0;
-}
-body.bar-shrunk .tab { gap: 0; min-width: 60px; }
+   this bar is the only way between the three screens.
 
-/* Nobody asked for the bar to move while they are reading. */
+   A gentle step, not a collapse: at 40px tall and 190px wide the earlier version
+   had shed a third of its height and a third of its width, which is far enough
+   to read as a different control appearing rather than the same one easing back.
+   The labels stay for the same reason - the bar keeps its proportions and simply
+   sits back. */
+body.bar-shrunk .tabbar {
+  transform: translateX(-50%) scale(.88);
+}
+/* The bar shrinks about its own bottom edge, so its top drops away and the gap
+   above it would otherwise open up. The button closes that gap by the same
+   amount it just gained. */
+body.bar-shrunk .fab {
+  transform: translateX(-50%) translateY(7px);
+}
+
+/* Nobody asked for the furniture to move while they are reading. */
 @media (prefers-reduced-motion: reduce) {
-  .tabbar, .tab, .tab-icon, .tab span { transition: none; }
+  .tabbar, .tab, .tab-icon { transition: none; }
 }
 
 /* ---------- Add sheet ---------- */
