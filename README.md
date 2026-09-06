@@ -566,6 +566,12 @@ tinted one. Measured after: 9.5:1.
 
 ### Shrinking out of the way
 
+It loses **width as well as height**. The bar is sized to its tabs and centred
+rather than stretched between two insets, so dropping the labels narrows it —
+304px down to 190px. Shrinking only the height left a long thin strip across the
+screen, which reads as a rail rather than a control.
+
+
 Reading a long list, the bar is the least useful thing on screen; on the way back
 up it is the most. So it gives up its labels and a third of its height while you
 are moving away from the top, and takes them back the moment you turn around.
@@ -594,6 +600,24 @@ agree drift apart; instead it reads the same variable and moves with it.
 Switching screens resets the bar to full, since the new screen starts at its top.
 And `prefers-reduced-motion` turns the whole animation off: nobody asked for the
 furniture to move while they are reading.
+
+## The segmented control
+
+The selected segment was **completely invisible in dark mode**, and the cause is
+worth recording because reading the CSS never reveals it: the thumb was
+`--surface`, which is `#1c1c1e`, and the track is `--fill-soft` — which over a
+black page composites to `rgb(28,28,30)`. The same colour. The selection was not
+dim, it was absent.
+
+Two tokens that look unrelated in the stylesheet and land on the same pixel is a
+class of bug only measurement catches, so the suite samples the rendered pixels
+of a selected and an unselected cell and compares them. Dark now reads **3.32:1**,
+which is the bar for a non-text UI indicator.
+
+Light mode is legitimately low-contrast by fill — white on pale grey is about
+**1.29:1**, and iOS is no different — because what distinguishes the thumb there
+is that it is **raised**, not that it is brighter. So the thumb is lifted in both
+themes, and the suite asserts the fill contrast on dark and the lift on both.
 
 ## The glass
 

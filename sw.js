@@ -2,7 +2,7 @@
 // Bump CACHE whenever app files change - the old cache is then dropped. It
 // usually tracks app.js's APP_VERSION, but it has to move even when the
 // visible version deliberately does not, so it carries its own suffix.
-const CACHE = 'tracky-v33';
+const CACHE = 'tracky-v34';
 const SHELL = [
   './',
   './index.html',

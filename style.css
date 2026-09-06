@@ -10,6 +10,12 @@
      fails badly on the dark one, which is far paler - see the dark block. */
   --on-primary: #ffffff;
   --tab-pill: rgba(255, 255, 255, .72);
+  /* The raised thumb in a segmented control. It cannot just be --surface: on
+     dark that is #1c1c1e, and the track (--fill-soft over a black page)
+     composites to exactly the same rgb(28,28,30), so the selection vanished
+     completely. The thumb has to be lighter than its own track, whatever the
+     theme makes that. */
+  --segment-thumb: #ffffff;
   --danger: #d93b3b;
   /* iOS grouped-background pairing: the page is the grey, cards are the white.
      Surfaces are separated by colour and a hairline, never by a drop shadow -
@@ -108,6 +114,7 @@
      leaves white text on it at 2.63:1. Near-black on it is 7.5:1. */
   --on-primary: #14141a;
   --tab-pill: rgba(255, 255, 255, .13);
+  --segment-thumb: #6e6e73;
   --danger: #ff6b6b;
   /* True black, not dark grey. On the OLED panel in every iPhone since the X
      the pixels are simply off, which is why Apple's dark mode goes here and why
@@ -513,8 +520,12 @@ button {
   transition: background .18s ease;
 }
 .segmented button.active {
-  background: var(--surface);
+  background: var(--segment-thumb);
   font-weight: 600;
+  /* iOS distinguishes the thumb as much by its lift as by its fill - in light
+     mode white-on-pale-grey is barely 1.3:1 and reads only because it is raised.
+     So the thumb is raised in both themes rather than relying on fill alone. */
+  box-shadow: 0 1px 3px rgba(0, 0, 0, .18), 0 0 0 .5px rgba(0, 0, 0, .06);
 }
 .segmented button:active { opacity: .6; }
 
@@ -1189,8 +1200,13 @@ button {
    like glass laid on the app rather than part of the chrome. */
 .tabbar {
   position: fixed;
-  left: 12px;
-  right: 12px;
+  /* Sized to its tabs and centred, rather than stretched between two insets.
+     Shrinking only the height left a long thin strip across the screen - the
+     bar has to lose width with the labels, or it reads as a rail rather than a
+     control. */
+  left: 50%;
+  transform: translateX(-50%);
+  max-width: calc(100% - 24px);
   bottom: calc(env(safe-area-inset-bottom) + 10px);
   display: flex;
   align-items: stretch;
@@ -1203,10 +1219,14 @@ button {
 }
 
 .tab {
-  flex: 1;
+  /* A fixed footprint rather than a share of the bar, so the bar's own width
+     follows the tabs instead of the other way round. */
+  flex: 0 0 auto;
+  min-width: 98px;
   position: relative;
   padding: 0;
   border-radius: 22px;
+  transition: min-width .22s cubic-bezier(.25, .9, .3, 1), color .18s ease;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -1281,11 +1301,11 @@ body.bar-shrunk .tab span {
   max-height: 0;
   opacity: 0;
 }
-body.bar-shrunk .tab { gap: 0; }
+body.bar-shrunk .tab { gap: 0; min-width: 60px; }
 
 /* Nobody asked for the bar to move while they are reading. */
 @media (prefers-reduced-motion: reduce) {
-  .tabbar, .tab-icon, .tab span { transition: none; }
+  .tabbar, .tab, .tab-icon, .tab span { transition: none; }
 }
 
 /* ---------- Add sheet ---------- */
