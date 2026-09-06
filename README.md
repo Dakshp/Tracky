@@ -543,6 +543,56 @@ All four values — the two tags, `--bg` in both themes, and the manifest's
 `theme_color` — are asserted equal by the status-bar suite, because the failure
 mode here is a near-miss, and a near-miss is not something you can see by eye.
 
+## The glass
+
+The tab bar is the one piece of chrome left floating over the page, and it is
+built from two settings that do different jobs:
+
+- the **fill** decides how much the bar tints what is behind it
+- the **blur** decides whether that content is still *readable*
+
+Thinning them together is the mistake. It produces a window: "Chai and samosa"
+legible straight through the tab bar, competing with the labels sitting on top of
+it. Apple's material is very transparent in tone and never see-through in detail.
+
+So the fill is thin — **.20 light, .12 dark**, down from .46 and .32 — the blur is
+heavier than before at 44px, and saturation runs at 300%. Saturation carries more
+of the effect than it looks: a thin fill alone reads as a dim panel, and pushing
+the colour of what is behind it is what makes the bar look lit by the content
+rather than laid over it. Measured, the bar now shifts the pixels behind it by
+**16 instead of 33** in dark, and **3.7 instead of 7** in light.
+
+### What headless rendering can and cannot check
+
+Chromium here has no GPU and renders `backdrop-filter`'s blur at a fraction of
+its real strength — rendered at `blur(0)` and `blur(44px)` side by side, the
+backdrop stays readable either way, while a real device obliterates it at 44.
+
+So the suite splits the difference: the **blur is asserted as a declaration**,
+while the fill, the saturation and the contrast are **measured**, because colour
+compositing is exact here. Usefully, that makes every contrast figure
+*pessimistic* — they are taken against a sharp backdrop the phone would have
+smeared into a flat wash. A number that passes here passes on the phone.
+
+### The halo
+
+Thin glass tracks the content, which is the point of it — and means the ground
+under the tab labels is not ours to choose. A full-width accent button scrolling
+under the bar took them to **1.3:1**; the thicker glass this replaced was no
+better at 2.5:1, so this was never a regression, just a weakness now worth
+fixing.
+
+Each label and icon carries a halo the opposite lightness to itself, in two
+stops: a tight one to lift the glyph off its ground, a wide soft one to darken or
+lighten the ground itself. It is invisible on ordinary content and decisive over
+a bright or saturated block — dark mode over white went from 1.7:1 to 8.5:1.
+
+One case stays under 4.5 and is worth naming rather than hiding: the **selected**
+tab over a solid full-bleed accent field, which is indigo type on indigo ground
+and about 2.4:1. It needs a field of `--primary` spanning the whole bar to
+happen, real content behind the bar is card edges and page rather than flat
+colour, and it is no worse than what shipped before.
+
 ## Search
 
 A field at the top of Compare, above the zoom and the category focus, because it

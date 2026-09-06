@@ -45,12 +45,28 @@
      looks like a solid white slab whatever the alpha claims. So the fill is
      genuinely thin and the blur is heavy - the blur, not the fill, is what stops
      the text behind from being legible through the panel. */
-  --glass-fill: rgba(255, 255, 255, .46);
-  --glass-rim-top: rgba(255, 255, 255, .95);
-  --glass-rim-bottom: rgba(255, 255, 255, .18);
+  --glass-fill: rgba(255, 255, 255, .20);
+  --glass-rim-top: rgba(255, 255, 255, 1);
+  --glass-rim-bottom: rgba(255, 255, 255, .22);
   --glass-hairline: rgba(255, 255, 255, .45);
   --glass-lift: 0 14px 40px rgba(24, 24, 52, .16), 0 3px 10px rgba(24, 24, 52, .08);
-  --glass-blur: saturate(215%) blur(34px);
+  /* Saturation carries most of the effect. A thin fill on its own reads as a
+     dim panel; pushing the colour of whatever is behind it is what makes the
+     bar look like it is lit by the content rather than laid over it. */
+  /* Heavy blur, thin fill. These are the two halves of the material and they do
+     different jobs: the FILL decides how much the bar tints what is behind it,
+     the BLUR decides whether that content is still readable. Thinning the fill
+     and the blur together produced a window - "Chai and samosa" legible through
+     the tab bar, competing with the labels on top of it. Apple's glass is very
+     transparent in tone and never see-through in detail. */
+  --glass-blur: saturate(300%) blur(44px);
+  /* A halo the opposite lightness to the label, so a tab stays readable over
+     whatever happens to be behind the glass. Thin glass tracks the content,
+     which is the point of it - and means the ground under these labels is not
+     ours to choose. A full-width accent button scrolling under the bar took
+     them to 1.3:1 without this, and the thicker glass it replaced was no
+     better at 2.5:1. */
+  --glass-halo: rgba(255, 255, 255, .95);
   /* Secondary text sitting ON glass, which is a lighter and less predictable
      ground than a solid card. Darker than --muted by exactly enough to keep the
      tab labels above 4.5:1 with a white expense row blurred behind them. */
@@ -101,13 +117,11 @@
   /* On dark the glass must be LIGHTER than the page behind it, the way frosted
      glass catches light. Matching the background is what made it read as a
      flat slab. */
-  --glass-fill: rgba(104, 104, 134, .32);
-  --glass-ink-muted: #c2c2d2;
-  /* Close to the page, not a grey slab on it. At the old lightness this sat at
-     roughly rgb(33,33,43) over a true-black page, which is a visible rectangle
-     rather than the page seen through something. */
-  --glass-rim-top: rgba(255, 255, 255, .50);
-  --glass-rim-bottom: rgba(255, 255, 255, .04);
+  --glass-fill: rgba(138, 138, 180, .12);
+  --glass-ink-muted: #d2d2e0;
+  --glass-halo: rgba(0, 0, 0, .92);
+  --glass-rim-top: rgba(255, 255, 255, .62);
+  --glass-rim-bottom: rgba(255, 255, 255, .05);
   --glass-hairline: rgba(255, 255, 255, .14);
   --glass-lift: 0 14px 40px rgba(0, 0, 0, .58), 0 3px 10px rgba(0, 0, 0, .4);
 
@@ -1173,6 +1187,10 @@ button {
   font-weight: 550;
   letter-spacing: .005em;
   color: var(--glass-ink-muted);
+  /* Two stops: a tight one to lift the glyph off its ground, a wider soft one
+     to darken (or lighten) the ground itself. Invisible on ordinary content,
+     decisive over a bright or saturated block. */
+  text-shadow: 0 0 2px var(--glass-halo), 0 0 5px var(--glass-halo), 0 0 11px var(--glass-halo);
   transition: color .18s ease;
 }
 /* The selected tab gets its own lighter pane inside the capsule, the way an
@@ -1183,6 +1201,9 @@ button {
 .tab:active { opacity: .55; }
 /* Stroked SVG rather than a Unicode glyph: consistent weight across platforms,
    and it inherits the tab's colour on selection. */
+/* The icons are stroked paths, so they need the same protection as the words
+   and cannot get it from text-shadow. */
+.tab .tab-icon { filter: drop-shadow(0 0 2px var(--glass-halo)) drop-shadow(0 0 4px var(--glass-halo)) drop-shadow(0 0 8px var(--glass-halo)); }
 .tab-icon {
   width: 23px;
   height: 23px;
