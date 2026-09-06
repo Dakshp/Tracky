@@ -713,6 +713,7 @@ button {
 .cal-dows {
   margin-bottom: 5px;
 }
+.cal-dows.hidden { display: none; }
 .cal-dows span {
   text-align: center;
   font-size: 11.5px;
@@ -739,6 +740,37 @@ button {
   color: var(--text);
   font-variant-numeric: tabular-nums;
 }
+/* ---------- Weeks and months in the same grid ----------
+   A week is a row of the day grid, so its cell simply spans all seven columns -
+   the "window" widening to cover the week rather than a different layout. The
+   proportions have to change with it: a 7-wide cell at the day grid's aspect
+   ratio would be a third of the screen tall. */
+.cal-grid.is-weeks {
+  grid-template-columns: 1fr;
+}
+.cal-day.cal-week {
+  aspect-ratio: auto;
+  min-height: 48px;
+  grid-auto-flow: column;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0 14px;
+}
+.cal-week .cal-num { font-size: var(--t-sub); }
+.cal-week .cal-sum { font-size: var(--t-sub); font-weight: 600; }
+
+/* Twelve months read best three across: four rows, and "Sep" fits without the
+   cell having to shrink its figure. */
+.cal-grid.is-months {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+.cal-day.cal-month {
+  aspect-ratio: 1 / .78;
+  border-radius: 13px;
+}
+.cal-month .cal-num { font-size: var(--t-sub); }
+.cal-month .cal-sum { font-size: 12px; }
+
 .cal-day[data-level="1"] { background: var(--cal-1); }
 .cal-day[data-level="2"] { background: var(--cal-2); }
 .cal-day[data-level="3"] { background: var(--cal-3); color: var(--cal-3-ink); }

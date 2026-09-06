@@ -2,7 +2,7 @@
 // two are what tell a fixed build apart from a cached one. Where a release only
 // rewrites visible copy, the copy itself is the tell, so this may hold while
 // CACHE takes a suffix instead.
-const APP_VERSION = 37;
+const APP_VERSION = 38;
 
 const state = {
   date: todayStr(),
@@ -812,18 +812,140 @@ function buildCalGrid(month, selected, categoryId) {
   return grid;
 }
 
+/**
+ * A month's weeks, one row each, spanning the grid's full width.
+ *
+ * The day grid is already Monday-first, so a week IS a row of it - which is why
+ * the week view keeps the calendar's shape and rhythm rather than becoming a
+ * list. The cell simply grows to the width of the week it stands for.
+ *
+ * The weeks shown are the ones that OVERLAP the month, not the ones inside it:
+ * the first week of a month almost always begins in the month before, and a
+ * week's total has to count those days or it disagrees with the headline for
+ * the same week.
+ */
+function buildWeekGrid(month, selected, categoryId) {
+  const today = todayStr();
+  const days = lastDayOfMonth(month);
+  const firstWeek = Store.periodOf(`${month}-01`, 'week');
+  const lastWeek = Store.periodOf(`${month}-${String(days).padStart(2, '0')}`, 'week');
+  const count = Math.round((parseUTC(lastWeek) - parseUTC(firstWeek)) / 86400000 / 7) + 1;
+  const totals = Store.getWeeklyTotals(count, lastWeek, categoryId, searchQuery);
+  const max = Math.max(...totals.map((t) => t.totalMinor), 1);
+
+  const grid = document.createElement('div');
+  grid.className = 'cal-grid is-weeks';
+  grid.setAttribute('role', 'grid');
+  grid.setAttribute('aria-label', `Spending week by week in ${formatMonthTitle(month)}`);
+
+  for (const { period, totalMinor } of totals) {
+    const end = shiftDate(period, 6);
+    const future = period > today;
+
+    const cell = document.createElement('button');
+    cell.type = 'button';
+    cell.className = 'cal-day cal-week';
+    cell.dataset.date = period;
+    cell.dataset.amount = String(totalMinor);
+    cell.disabled = future;
+    const step = totalMinor > 0 ? Math.max(1, Math.ceil((totalMinor / max) * (CAL_STEPS - 1))) : 0;
+    cell.dataset.level = future ? 'future' : String(step);
+    if (period === Store.periodOf(today, 'week')) cell.classList.add('is-today');
+    if (period === selected) {
+      cell.classList.add('is-selected');
+      cell.setAttribute('aria-current', 'date');
+    }
+
+    const num = document.createElement('span');
+    num.className = 'cal-num';
+    num.textContent = `${Number(period.slice(8))}–${Number(end.slice(8))} ${fmtUTC(parseUTC(end), { month: 'short' })}`;
+    cell.appendChild(num);
+
+    if (!future) {
+      const sum = document.createElement('span');
+      sum.className = 'cal-sum';
+      if (!totalMinor) sum.classList.add('is-zero');
+      sum.textContent = cellAmount(totalMinor);
+      cell.appendChild(sum);
+    }
+    cell.setAttribute('aria-label', `${vsLabel(period, 'week')}: ${
+      future ? 'not yet' : totalMinor > 0 ? formatMoney(totalMinor, { compact: true }) : 'nothing spent'
+    }`);
+    grid.appendChild(cell);
+  }
+  return grid;
+}
+
+/** A year as twelve cells, so a year of months reads the way a month of days does. */
+function buildMonthGrid(year, selected, categoryId) {
+  const thisMonth = monthOf(todayStr());
+  const totals = Store.getMonthlyTotals(year, categoryId, searchQuery);
+  const max = Math.max(...totals.map((t) => t.totalMinor), 1);
+
+  const grid = document.createElement('div');
+  grid.className = 'cal-grid is-months';
+  grid.setAttribute('role', 'grid');
+  grid.setAttribute('aria-label', `Spending month by month in ${year}`);
+
+  for (const { period, totalMinor } of totals) {
+    const future = period > thisMonth;
+    const cell = document.createElement('button');
+    cell.type = 'button';
+    cell.className = 'cal-day cal-month';
+    cell.dataset.date = period;
+    cell.dataset.amount = String(totalMinor);
+    cell.disabled = future;
+    const step = totalMinor > 0 ? Math.max(1, Math.ceil((totalMinor / max) * (CAL_STEPS - 1))) : 0;
+    cell.dataset.level = future ? 'future' : String(step);
+    if (period === thisMonth) cell.classList.add('is-today');
+    if (period === selected) {
+      cell.classList.add('is-selected');
+      cell.setAttribute('aria-current', 'date');
+    }
+
+    const num = document.createElement('span');
+    num.className = 'cal-num';
+    num.textContent = fmtUTC(parseUTC(`${period}-01`), { month: 'short' });
+    cell.appendChild(num);
+
+    if (!future) {
+      const sum = document.createElement('span');
+      sum.className = 'cal-sum';
+      if (!totalMinor) sum.classList.add('is-zero');
+      sum.textContent = cellAmount(totalMinor);
+      cell.appendChild(sum);
+    }
+    cell.setAttribute('aria-label', `${formatMonthTitle(period)}: ${
+      future ? 'not yet' : totalMinor > 0 ? formatMoney(totalMinor, { compact: true }) : 'nothing spent'
+    }`);
+    grid.appendChild(cell);
+  }
+  return grid;
+}
+
+// Which month a week belongs to for paging purposes: the one it ENDS in, so a
+// week straddling a boundary pages with the month it mostly sits in rather than
+// jumping back a page when it is selected.
+function weekAnchor(data) {
+  return data.granularity === 'week' ? shiftDate(data.period, 6) : data.period;
+}
+
 function renderCalendar(data) {
   const card = el('calendarCard');
-  const isDay = data.granularity === 'day';
-  // The calendar is an alternative to the chart, not a replacement for it. Both
-  // answer different questions - the chart shows the run of recent days, the
-  // calendar the shape of a whole month - so the choice is the reader's, and it
-  // is remembered.
-  const view = isDay ? Store.getSettings().dayView : 'chart';
-  const showCal = isDay && view === 'calendar';
+  const gran = data.granularity;
+  // Every zoom below a year has a grid now: days in a month, weeks in a month,
+  // months in a year. A year of years is not a shape anyone reads, so Year keeps
+  // the chart alone.
+  const hasGrid = gran !== 'year';
+  // The grid is an alternative to the chart, not a replacement for it. Both
+  // answer different questions - the chart shows the run of recent periods, the
+  // grid the shape of a whole month or year - so the choice is the reader's, and
+  // it is remembered.
+  const view = hasGrid ? Store.getSettings().dayView : 'chart';
+  const showCal = hasGrid && view === 'calendar';
 
   const toggle = el('dayViewToggle');
-  toggle.classList.toggle('hidden', !isDay);
+  toggle.classList.toggle('hidden', !hasGrid);
   toggle.querySelectorAll('button').forEach((b) => {
     const on = b.dataset.view === view;
     b.classList.toggle('active', on);
@@ -834,30 +956,46 @@ function renderCalendar(data) {
   el('chartNote').parentElement.classList.toggle('hidden', showCal);
   if (!showCal) return;
 
-  const month = monthOf(data.period);
   const today = todayStr();
-  el('calMonth').textContent = formatMonthTitle(month);
-  el('calNext').disabled = month >= monthOf(today);
+  // Months page through months; the year of months pages through years.
+  const byMonths = gran === 'month';
+  const unit = byMonths ? monthOf(today).slice(0, 4) : monthOf(today);
+  const frame = byMonths ? data.period.slice(0, 4) : monthOf(weekAnchor(data));
 
-  // Weekday initials come from the browser rather than a hard-coded list, so a
-  // phone set to another language gets its own.
+  el('calMonth').textContent = byMonths ? frame : formatMonthTitle(frame);
+  el('calNext').disabled = frame >= unit;
+
+  // Only the day grid has weekday columns. Weeks are rows and months are their
+  // own cells, so a row of initials over either would be labelling nothing.
   const dows = el('calDows');
+  dows.classList.toggle('hidden', gran !== 'day');
   dows.innerHTML = '';
-  for (let i = 0; i < 7; i++) {
-    const cell = document.createElement('span');
-    // 2024-01-01 was a Monday, which is the column the grid starts on.
-    cell.textContent = new Date(Date.UTC(2024, 0, 1 + i))
-      .toLocaleDateString(undefined, { weekday: 'narrow', timeZone: 'UTC' });
-    dows.appendChild(cell);
+  if (gran === 'day') {
+    // Weekday initials come from the browser rather than a hard-coded list, so a
+    // phone set to another language gets its own.
+    for (let i = 0; i < 7; i++) {
+      const cell = document.createElement('span');
+      // 2024-01-01 was a Monday, which is the column the grid starts on.
+      cell.textContent = new Date(Date.UTC(2024, 0, 1 + i))
+        .toLocaleDateString(undefined, { weekday: 'narrow', timeZone: 'UTC' });
+      dows.appendChild(cell);
+    }
   }
 
   fillPager(el('calPager'), (offset) => {
-    const [y, m] = month.split('-').map(Number);
+    if (byMonths) {
+      const target = String(Number(frame) + offset);
+      if (target > unit) return null;
+      return buildMonthGrid(target, data.period, data.categoryId);
+    }
+    const [y, m] = frame.split('-').map(Number);
     const target = new Date(Date.UTC(y, m - 1 + offset, 1)).toISOString().slice(0, 7);
-    if (target > monthOf(today)) return null;
+    if (target > unit) return null;
     // The focus scopes the grid too: with one category selected the cells show
-    // that category's days, matching every other figure on the screen.
-    return buildCalGrid(target, data.period, data.categoryId);
+    // that category's periods, matching every other figure on the screen.
+    return gran === 'week'
+      ? buildWeekGrid(target, data.period, data.categoryId)
+      : buildCalGrid(target, data.period, data.categoryId);
   });
 
   el('calPager').querySelectorAll('.is-current .cal-day').forEach((cell) => {
@@ -873,16 +1011,15 @@ function renderCalendar(data) {
   // the direction is not the same in both themes: the ramp runs towards deep
   // indigo on a light page and towards pale indigo on a dark one, so saying
   // "darker" in dark mode would name the wrong end.
-  const spent = Store.getDailyTotals(
-    lastDayOfMonth(month),
-    `${month}-${String(lastDayOfMonth(month)).padStart(2, '0')}`,
-    data.categoryId,
-    searchQuery
-  ).map((t) => t.totalMinor).filter((v) => v > 0);
+  const grid = el('calPager').querySelector('.is-current');
+  const spent = Array.from(grid ? grid.querySelectorAll('.cal-day') : [])
+    .map((c) => Number(c.dataset.amount) || 0)
+    .filter((v) => v > 0);
   const dark = document.documentElement.dataset.theme === 'dark';
+  const per = { day: 'a day', week: 'a week', month: 'a month' }[gran];
   el('calScale').textContent = spent.length
-    ? `${dark ? 'Brighter' : 'Darker'} means more spent · up to ${formatMoney(Math.max(...spent), { compact: true })} a day`
-    : 'Nothing spent this month';
+    ? `${dark ? 'Brighter' : 'Darker'} means more spent · up to ${formatMoney(Math.max(...spent), { compact: true })} ${per}`
+    : `Nothing spent this ${byMonths ? 'year' : 'month'}`;
 }
 
 /**

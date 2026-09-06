@@ -324,6 +324,51 @@ const Store = (() => {
     return out;
   }
 
+  /**
+   * Totals for a run of weeks, newest last, keyed by the week's Monday.
+   *
+   * Weeks straddle months, so this is asked for by a span of week-starts rather
+   * than by month: the first week shown in a calendar usually begins in the
+   * month before it, and that week's total has to include those days or the
+   * figure disagrees with the one the headline shows for the same week.
+   */
+  function getWeeklyTotals(count, endWeekStart, categoryId, query) {
+    const terms = queryTerms(query);
+    const labelOf = terms.length ? categoryLabeller() : null;
+    const byWeek = {};
+    for (const e of live(load().expenses)) {
+      if (categoryId && e.category !== categoryId) continue;
+      if (terms.length && !matchesQuery(e, terms, labelOf)) continue;
+      const w = weekStart(e.date);
+      byWeek[w] = (byWeek[w] || 0) + (Number(e.amountMinor) || 0);
+    }
+    const out = [];
+    for (let i = count - 1; i >= 0; i--) {
+      const period = shiftPeriod(endWeekStart, 'week', -i);
+      out.push({ period, totalMinor: byWeek[period] || 0 });
+    }
+    return out;
+  }
+
+  /** The twelve months of one year, so a year reads as a grid the way a month does. */
+  function getMonthlyTotals(year, categoryId, query) {
+    const terms = queryTerms(query);
+    const labelOf = terms.length ? categoryLabeller() : null;
+    const byMonth = {};
+    for (const e of live(load().expenses)) {
+      if (categoryId && e.category !== categoryId) continue;
+      if (terms.length && !matchesQuery(e, terms, labelOf)) continue;
+      const m = e.date.slice(0, 7);
+      byMonth[m] = (byMonth[m] || 0) + (Number(e.amountMinor) || 0);
+    }
+    const out = [];
+    for (let m = 1; m <= 12; m++) {
+      const period = `${year}-${String(m).padStart(2, '0')}`;
+      out.push({ period, totalMinor: byMonth[period] || 0 });
+    }
+    return out;
+  }
+
   function getRecentDays(limit) {
     const byDate = {};
     for (const e of live(load().expenses)) {
@@ -850,6 +895,8 @@ const Store = (() => {
     getDay,
     getMonth,
     getDailyTotals,
+    getWeeklyTotals,
+    getMonthlyTotals,
     getRecentDays,
     periodOf,
     shiftPeriod,

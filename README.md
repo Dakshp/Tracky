@@ -374,6 +374,32 @@ button beside it. Without a visible version there is no way to tell a fixed buil
 from a cached one, and "it still doesn't work" cannot be answered. Bump
 `APP_VERSION` in `app.js` and `CACHE` in `sw.js` together on every release.
 
+## The grid
+
+Every zoom below a year has a grid, and it is the same grid: **days in a month,
+weeks in a month, months in a year.**
+
+The day grid is already Monday-first, which means **a week is literally a row of
+it** — so the week view keeps the calendar's shape and rhythm rather than turning
+into a list. The cell just grows to the width of the week it stands for, and the
+selection is that whole row with its total on it.
+
+A year of months is the same idea one step out: twelve cells, three across, each
+carrying its month's total, shaded on the same four steps. **Year keeps the chart
+alone**, because a grid of years is not a shape anyone reads.
+
+### The straddle
+
+The weeks a month shows are the ones that **overlap** it, not the ones inside it.
+A month almost always begins mid-week, so its first row starts in the month
+before — and that row's total has to count those earlier days, or the grid and
+the headline disagree about the same week. That is why week totals are asked for
+by a span of week-starts rather than by month, and why the suite checks the first
+row of a month specifically.
+
+Weekday initials appear over the day grid only. Weeks are rows and months are
+their own cells, so a row of initials over either would be labelling nothing.
+
 ## The calendar
 
 At day zoom the chart has a twin: a month grid — the shape everyone already
