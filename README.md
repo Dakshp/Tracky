@@ -543,6 +543,44 @@ All four values — the two tags, `--bg` in both themes, and the manifest's
 `theme_color` — are asserted equal by the status-bar suite, because the failure
 mode here is a near-miss, and a near-miss is not something you can see by eye.
 
+## Search
+
+A field at the top of Compare, above the zoom and the category focus, because it
+narrows what those two then operate on.
+
+It exists for a question the app could not answer: someone who writes "Milk" in
+the note every time they order milk wants to know **what milk costs them** — a
+question the category breakdown cannot reach, because milk is not a category and
+should not have to become one to be counted.
+
+Typing `milk` rescopes **everything on the screen at once** — the headline, the
+chart, the calendar, the category breakdown and the entry list. That is not a
+convenience; it is the whole point. A search that narrowed only the list would
+leave a total above it that no longer described what was underneath.
+
+**How it is implemented is what keeps that true.** Search filters the expense
+list once, at the top of `getComparison`, and every figure is derived from the
+filtered list. Nothing had to be taught about searching individually, so nothing
+can be forgotten and left reporting the wrong universe — which is exactly the bug
+the calendar had with the category focus before.
+
+Search and focus **compose**: search narrows the universe, focus narrows within
+it. Focus Groceries with `milk` typed and you get milk bought as groceries.
+
+**What it matches**, case-insensitively: the note, the category (both the id and
+the label as displayed, so someone can type "Food & Drink" rather than "food"),
+and the amount. Several words are ANDed, and each may land in any field, so
+`milk 60` finds the sixty-rupee milk rather than everything mentioning either.
+
+The amount is matched **as text**, deliberately. Someone hunting a payment they
+half-remember types `450` and wants it found whether it was ₹450 or ₹4,500; a
+numeric equality test would answer "no results" to a search with an obvious
+answer sitting in the list.
+
+**The headline names the search** — *Total spent matching **milk*** — because a
+total that has quietly changed meaning should say so rather than leave the reader
+to work out why it looks too small.
+
 ## Coming from another app
 
 **Settings → Data & Sync → Bring data from another app** reads a CSV export from

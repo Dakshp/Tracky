@@ -1332,6 +1332,64 @@ button {
 
 .hint { font-size: var(--t-foot); color: var(--muted); padding: 12px 16px; margin: 0; line-height: 1.45; }
 
+/* ---------- Search ----------
+   A real field rather than an icon that expands into one: this is the control
+   that answers "how much do I spend on milk", which is a question worth asking
+   often enough that it should not be behind a tap. */
+.search-row {
+  position: relative;
+  display: flex;
+  align-items: center;
+  margin-bottom: 10px;
+}
+.search-icon {
+  position: absolute;
+  left: 12px;
+  width: 18px;
+  height: 18px;
+  color: var(--muted);
+  pointer-events: none;
+}
+.search-input {
+  width: 100%;
+  min-height: 44px;
+  padding: 11px 40px 11px 38px;
+  border: none;
+  border-radius: 12px;
+  background: var(--fill-soft);
+  color: var(--text);
+  font: inherit;
+  font-size: var(--t-body);
+  -webkit-appearance: none;
+  appearance: none;
+}
+.search-input::placeholder { color: var(--muted); }
+.search-input:focus { outline: 2px solid var(--primary); outline-offset: -2px; }
+/* Safari draws its own clear button on type=search, which would sit beside
+   ours and do the same job with half the tap target. */
+.search-input::-webkit-search-decoration,
+.search-input::-webkit-search-cancel-button { -webkit-appearance: none; appearance: none; }
+
+.search-clear {
+  position: absolute;
+  right: 4px;
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  font-size: 22px;
+  line-height: 1;
+  color: var(--muted);
+}
+.search-clear:active { background: var(--fill-soft); }
+
+/* What the search is currently doing, said in the headline rather than left for
+   the reader to infer from a total that looks too small. */
+.hero-scope {
+  font-size: var(--t-foot);
+  color: var(--muted);
+}
+.hero-scope strong { color: var(--text); font-weight: 650; }
+
 /* ---------- Importing a CSV ----------
    A form that appears one answer at a time. It sits inside the card rather than
    in a sheet of its own, because every question here is about the file named on

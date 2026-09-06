@@ -2,7 +2,7 @@
 // two are what tell a fixed build apart from a cached one. Where a release only
 // rewrites visible copy, the copy itself is the tell, so this may hold while
 // CACHE takes a suffix instead.
-const APP_VERSION = 28;
+const APP_VERSION = 29;
 
 const state = {
   date: todayStr(),
@@ -10,6 +10,10 @@ const state = {
   amount: '0',
   editingId: null,
 };
+
+// A search is a way of looking, not a setting: it lives here rather than in
+// storage, so it survives moving between tabs and is gone on the next launch.
+let searchQuery = '';
 
 const el = (id) => document.getElementById(id);
 
@@ -738,7 +742,7 @@ function cellAmount(minor) {
 function buildCalGrid(month, selected, categoryId) {
   const today = todayStr();
   const days = lastDayOfMonth(month);
-  const totals = Store.getDailyTotals(days, `${month}-${String(days).padStart(2, '0')}`, categoryId);
+  const totals = Store.getDailyTotals(days, `${month}-${String(days).padStart(2, '0')}`, categoryId, searchQuery);
   const byDate = Object.fromEntries(totals.map((t) => [t.date, t.totalMinor]));
   const max = Math.max(...totals.map((t) => t.totalMinor), 1);
 
@@ -872,7 +876,8 @@ function renderCalendar(data) {
   const spent = Store.getDailyTotals(
     lastDayOfMonth(month),
     `${month}-${String(lastDayOfMonth(month)).padStart(2, '0')}`,
-    data.categoryId
+    data.categoryId,
+    searchQuery
   ).map((t) => t.totalMinor).filter((v) => v > 0);
   const dark = document.documentElement.dataset.theme === 'dark';
   el('calScale').textContent = spent.length
@@ -922,6 +927,7 @@ function renderCompare() {
     endPeriod: compare.anchor,
     categoryId: compare.categoryId,
     span: SPAN[compare.granularity],
+    query: searchQuery,
   });
 
   el('periodTitle').textContent = periodLabel(data.period, data.granularity);
@@ -937,7 +943,13 @@ function renderCompare() {
   el('nextPeriod').disabled = atPresent;
 
   const focus = data.categoryId ? categoryMeta(data.categoryId) : null;
-  el('cmpLabel').textContent = focus ? `${focus.icon} ${focus.label}` : 'Total spent';
+  // With a search on, a total that looks too small needs to say why. Naming the
+  // search in the label is cheaper than making the reader work it out from a
+  // number that has quietly changed meaning.
+  const base = focus ? `${focus.icon} ${focus.label}` : 'Total spent';
+  el('cmpLabel').innerHTML = searchQuery
+    ? `${escapeHtml(base)} <span class="hero-scope">matching <strong>${escapeHtml(searchQuery)}</strong></span>`
+    : escapeHtml(base);
   el('cmpTotal').textContent = formatMoney(data.currentTotal, { compact: true });
 
   const d = deltaInfo(data.deltaMinor, data.hasPrevious);
@@ -1438,6 +1450,38 @@ function onWheelGesture(e, step) {
 }
 
 function initCompareControls() {
+  const search = el('cmpSearch');
+  const clear = el('cmpSearchClear');
+  // Debounced, because every keystroke re-derives the chart, the calendar, the
+  // breakdown and the entry list, and a phone typing "groceries" would do that
+  // nine times for eight results nobody read.
+  let searchTimer = null;
+  const applySearch = () => {
+    searchQuery = search.value.trim();
+    clear.hidden = !search.value;
+    renderCompare();
+  };
+  search.addEventListener('input', () => {
+    clear.hidden = !search.value;
+    clearTimeout(searchTimer);
+    searchTimer = setTimeout(applySearch, 160);
+  });
+  // Enter should not wait out the debounce, and on a phone it also dismisses
+  // the keyboard, which is most of why someone presses it.
+  search.addEventListener('keydown', (e) => {
+    if (e.key !== 'Enter') return;
+    e.preventDefault();
+    clearTimeout(searchTimer);
+    applySearch();
+    search.blur();
+  });
+  clear.addEventListener('click', () => {
+    clearTimeout(searchTimer);
+    search.value = '';
+    applySearch();
+    search.focus();
+  });
+
   const select = el('focusCategory');
   select.addEventListener('change', () => {
     compare.categoryId = select.value || null;

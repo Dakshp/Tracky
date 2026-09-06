@@ -302,10 +302,13 @@ const Store = (() => {
   // calendar answer the same question as the rest of the Compare screen while a
   // focus is on. Without it the grid kept reporting whole-day totals under a
   // heading that said otherwise.
-  function getDailyTotals(days, endDate, categoryId) {
+  function getDailyTotals(days, endDate, categoryId, query) {
+    const terms = queryTerms(query);
+    const labelOf = terms.length ? categoryLabeller() : null;
     const byDate = {};
     for (const e of live(load().expenses)) {
       if (categoryId && e.category !== categoryId) continue;
+      if (terms.length && !matchesQuery(e, terms, labelOf)) continue;
       byDate[e.date] = (byDate[e.date] || 0) + (Number(e.amountMinor) || 0);
     }
     // Pure UTC calendar arithmetic so day-stepping never shifts across a
@@ -498,8 +501,52 @@ const Store = (() => {
    * context - the highlighted row's value is exactly the headline value, so the
    * two never disagree.
    */
-  function getComparison({ granularity = 'month', period, endPeriod, categoryId = null, span = 12 }) {
-    const expenses = live(load().expenses);
+  /**
+   * Does one expense match a free-text search?
+   *
+   * Terms are ANDed and each may land in any field, so "milk 60" finds the
+   * sixty-rupee milk rather than everything that mentions either. Matching the
+   * category LABEL as well as its id is what lets someone type what they see on
+   * screen ("Food & Drink") rather than what is stored ("food").
+   *
+   * The amount is matched as text on purpose. Someone hunting a payment they
+   * half-remember types "450", and wants it found whether it was 450 or 4,500 -
+   * a numeric equality test would answer "no results" to a search that has an
+   * obvious answer sitting in the list.
+   */
+  function matchesQuery(e, terms, labelOf) {
+    if (!terms.length) return true;
+    const major = (Number(e.amountMinor) || 0) / MINOR_PER_MAJOR;
+    const haystack = [
+      String(e.note || ''),
+      String(e.category || ''),
+      labelOf(e.category),
+      String(major),
+      major.toFixed(2),
+    ].join(' ').toLowerCase();
+    return terms.every((t) => haystack.includes(t));
+  }
+
+  // Split once per query rather than once per expense. Empty means "everything",
+  // which is what an empty search box should mean.
+  function queryTerms(query) {
+    return String(query || '').toLowerCase().trim().split(/\s+/).filter(Boolean);
+  }
+
+  function categoryLabeller() {
+    const labels = {};
+    for (const c of getCategoriesForDisplay()) labels[c.id] = String(c.label || '').toLowerCase();
+    return (id) => labels[id] || '';
+  }
+
+  function getComparison({ granularity = 'month', period, endPeriod, categoryId = null, span = 12, query = '' }) {
+    // Search narrows the universe; the category focus then narrows within it.
+    // Filtering here rather than at each figure is what keeps the headline, the
+    // chart, the breakdown and the entries agreeing with one another - they are
+    // all derived from this one list.
+    const terms = queryTerms(query);
+    const labelOf = categoryLabeller();
+    const expenses = live(load().expenses).filter((e) => matchesQuery(e, terms, labelOf));
     const idx = buildIndex(expenses, granularity);
 
     const valueAt = (p) => {
@@ -554,9 +601,7 @@ const Store = (() => {
       currentTotal,
       previousTotal,
       deltaMinor: currentTotal - previousTotal,
-      entryCount: categoryId
-        ? expenses.filter((e) => e.category === categoryId && periodOf(e.date, granularity) === period).length
-        : curBucket.count,
+      entryCount: inPeriod.length,
       categories,
       hasPrevious: Boolean(idx[previous]),
       biggest,
