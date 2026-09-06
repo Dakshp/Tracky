@@ -453,6 +453,28 @@ row of a month specifically.
 Weekday initials appear over the day grid only. Weeks are rows and months are
 their own cells, so a row of initials over either would be labelling nothing.
 
+### One height, divided
+
+Cells used to be sized by **aspect ratio**, which made the grid's height follow
+its width and, worse, made it follow the calendar. A month needs five rows or
+six depending on the day it starts on — and the pager holds three months side by
+side, so a five-row September next to a six-row August was stretched to match
+and carried **58px of dead space** under it, while a month between two five-row
+neighbours made the whole card shorter. The card changed height as you paged,
+and it stood 469px tall against 358px wide: visibly a column, not a calendar.
+
+Padding every month out to six rows fixed the height and left most months with a
+blank row — trading dead space at the bottom of the card for dead space inside
+it. What works is the other way round: **one fixed height, divided by however
+many rows the frame actually has.** A six-row month gets 42px rows, a five-row
+month gets 51px ones, and neither the card nor the pager moves. 358×398 with
+near-square day cells, no empty row, and nothing shifting under your thumb.
+
+The same height is shared by weeks, months and years, so switching zoom does not
+resize the card either — only the day grid is taller, by the 17px of weekday
+initials above it. The suite measures all three pages of the pager at every zoom
+and fails if any of them disagree.
+
 ## The calendar
 
 At day zoom the chart has a twin: a month grid — the shape everyone already

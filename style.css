@@ -704,9 +704,9 @@ button {
 .cal-dows, .cal-grid {
   display: grid;
   /* minmax(0, 1fr), not 1fr. A bare 1fr floors each track at its content's
-     minimum, and the blanks' aspect-ratio fed the row height back in as a width
-     - so the first five columns grew to 53.8px against the rest at 43.4px, the
-     grid overflowed the card, and the month sat a column out of true. */
+     minimum, so a cell wider than its share pushes the columns out of step -
+     which once left the first five columns at 53.8px against the rest at 43.4px
+     and the whole month a column out of true. */
   grid-template-columns: repeat(7, minmax(0, 1fr));
   gap: 5px;
 }
@@ -721,15 +721,24 @@ button {
   color: var(--muted);
 }
 
-/* No aspect-ratio here: the row height comes from the day cells, and giving
-   the blanks one of their own is what skewed the column widths. */
+/* Leading spacers for the days before the 1st. min-width: 0 so an empty track
+   cannot claim more than its share of the row. */
 .cal-blank { min-width: 0; }
+
+/* Every grid is the same height, split between however many rows it has
+   (--rows, set by the builders). Not an aspect ratio on the cells: that made
+   the height follow the width, so the card changed shape with the screen, and a
+   month needing five rows sat a dead row shorter than its six-row neighbours in
+   the pager. One height fixes both, and holds the card still when you switch
+   between days, weeks, months and years as well as when you swipe. 277px is six
+   rows of 42px - the densest case, and still near-square per day cell. */
+.cal-grid {
+  height: 277px;
+  grid-template-rows: repeat(var(--rows, 6), minmax(0, 1fr));
+}
 
 .cal-day {
   gap: 1px;
-  /* Taller than wide, to fit the amount under the date without shrinking either
-     to the point of being decorative. */
-  aspect-ratio: 1 / 1.24;
   border-radius: 11px;
   display: grid;
   place-items: center;
@@ -749,8 +758,6 @@ button {
   grid-template-columns: 1fr;
 }
 .cal-day.cal-week {
-  aspect-ratio: auto;
-  min-height: 50px;
   grid-auto-flow: column;
   justify-content: space-between;
   align-items: center;
@@ -795,7 +802,6 @@ button {
   grid-template-columns: repeat(3, minmax(0, 1fr));
 }
 .cal-day.cal-month {
-  aspect-ratio: 1 / .78;
   border-radius: 13px;
   overflow: hidden;
   align-content: center;

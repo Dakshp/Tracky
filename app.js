@@ -2,7 +2,7 @@
 // two are what tell a fixed build apart from a cached one. Where a release only
 // rewrites visible copy, the copy itself is the tell, so this may hold while
 // CACHE takes a suffix instead.
-const APP_VERSION = 40;
+const APP_VERSION = 41;
 
 const state = {
   date: todayStr(),
@@ -794,7 +794,7 @@ function buildCalGrid(month, selected, categoryId) {
   const max = Math.max(...totals.map((t) => t.totalMinor), 1);
 
   const grid = document.createElement('div');
-  grid.className = 'cal-grid';
+  grid.className = 'cal-grid is-days';
   grid.setAttribute('role', 'grid');
   grid.setAttribute('aria-label', `Spending in ${formatMonthTitle(month)}`);
 
@@ -856,6 +856,16 @@ function buildCalGrid(month, selected, categoryId) {
     }`);
     grid.appendChild(cell);
   }
+
+  // The rows divide a fixed height rather than each being a fixed size. A month
+  // needs five or six rows depending on the day it starts on, and the pager
+  // holds three months side by side - so sizing rows individually made a
+  // five-row month next to a six-row one carry a dead row's worth of space, and
+  // the card changed height as you paged. Padding to six rows every time fixed
+  // the height but left most months with a blank row. Splitting one height
+  // between however many rows there are does both: the card never moves and no
+  // row is empty; a five-row month just gets slightly taller cells.
+  grid.style.setProperty('--rows', String(Math.ceil(grid.children.length / 7)));
   return grid;
 }
 
@@ -884,6 +894,9 @@ function buildWeekGrid(month, selected, categoryId) {
   grid.className = 'cal-grid is-weeks';
   grid.setAttribute('role', 'grid');
   grid.setAttribute('aria-label', `Spending week by week in ${formatMonthTitle(month)}`);
+  // One row per week, dividing the same height the day grid uses - see the
+  // .cal-grid rules. A month spans five weeks or six; both fill the card.
+  grid.style.setProperty('--rows', String(count));
 
   for (const { period, totalMinor } of totals) {
     const end = shiftDate(period, 6);
@@ -954,6 +967,7 @@ function buildYearGrid(startYear, selected, categoryId) {
   grid.className = 'cal-grid is-months is-years';
   grid.setAttribute('role', 'grid');
   grid.setAttribute('aria-label', `Spending year by year, ${startYear} to ${Number(startYear) + YEAR_CELLS - 1}`);
+  grid.style.setProperty('--rows', String(YEAR_CELLS / 3));
 
   for (const { period, totalMinor } of totals) {
     const future = period > thisYear;
@@ -1001,6 +1015,7 @@ function buildMonthGrid(year, selected, categoryId) {
   grid.className = 'cal-grid is-months';
   grid.setAttribute('role', 'grid');
   grid.setAttribute('aria-label', `Spending month by month in ${year}`);
+  grid.style.setProperty('--rows', String(YEAR_CELLS / 3));
 
   for (const { period, totalMinor } of totals) {
     const future = period > thisMonth;
