@@ -648,7 +648,9 @@ colour, and it is no worse than what shipped before.
 ## Search
 
 A field at the **bottom** of Compare's three controls — zoom, then category, then
-search. The zoom and the category are set almost every time the screen is opened;
+search — and the whole group sits **under the Today card**, not over it. The
+headline is what someone came to see, so it goes first, and the controls that
+change it sit directly beneath the thing they change. The zoom and the category are set almost every time the screen is opened;
 the search is reached for when someone wants one particular thing, which is less
 often, so it sits last.
 

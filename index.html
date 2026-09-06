@@ -113,7 +113,21 @@
          the top. The period moved down to the card it actually describes. -->
     <div class="scroll-area">
       <h1 class="large-title">Stats</h1>
-      <!-- One filter row, above everything it scopes. -->
+      <div class="hero-card">
+        <div class="period-nav">
+          <button class="nav-arrow" id="prevPeriod" type="button" aria-label="Earlier period">&#8249;</button>
+          <span class="period-name" id="periodTitle">Today</span>
+          <button class="nav-arrow" id="nextPeriod" type="button" aria-label="Later period">&#8250;</button>
+        </div>
+        <span class="hero-label" id="cmpLabel">Total spent</span>
+        <span class="hero-amount" id="cmpTotal">0</span>
+        <span class="delta-pill" id="cmpDelta"></span>
+        <span class="hero-sub" id="cmpSub"></span>
+      </div>
+
+      <!-- Under the card rather than over it. The headline is what someone came
+           to see, so it goes first and the controls that adjust it sit directly
+           beneath, against the thing they change. -->
       <div class="filter-row">
         <div class="segmented" id="granularityToggle" role="group" aria-label="Compare by">
           <button type="button" data-gran="day" class="active">Day</button>
@@ -139,18 +153,6 @@
                  aria-label="Search expenses">
           <button type="button" id="cmpSearchClear" class="search-clear" aria-label="Clear search" hidden>&times;</button>
         </div>
-      </div>
-
-      <div class="hero-card">
-        <div class="period-nav">
-          <button class="nav-arrow" id="prevPeriod" type="button" aria-label="Earlier period">&#8249;</button>
-          <span class="period-name" id="periodTitle">Today</span>
-          <button class="nav-arrow" id="nextPeriod" type="button" aria-label="Later period">&#8250;</button>
-        </div>
-        <span class="hero-label" id="cmpLabel">Total spent</span>
-        <span class="hero-amount" id="cmpTotal">0</span>
-        <span class="delta-pill" id="cmpDelta"></span>
-        <span class="hero-sub" id="cmpSub"></span>
       </div>
 
       <div class="section-head">

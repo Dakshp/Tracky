@@ -488,7 +488,9 @@ button {
   flex-direction: column;
   align-items: stretch;
   gap: 10px;
-  margin-bottom: 16px;
+  /* Tight to the card above, which it belongs to, and clear of the section
+     heading below, which it does not. */
+  margin: 12px 0 22px;
 }
 
 /* iOS segmented control: a sunken track with one raised thumb sliding in it.
