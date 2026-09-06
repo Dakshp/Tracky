@@ -750,14 +750,44 @@ button {
 }
 .cal-day.cal-week {
   aspect-ratio: auto;
-  min-height: 48px;
+  min-height: 50px;
   grid-auto-flow: column;
   justify-content: space-between;
   align-items: center;
-  padding: 0 14px;
+  padding: 0 15px;
+  overflow: hidden;
 }
 .cal-week .cal-num { font-size: var(--t-sub); }
 .cal-week .cal-sum { font-size: var(--t-sub); font-weight: 600; }
+
+/* The quantity, as a length. Both large cells stay on the calm base colour and
+   carry a bar instead of being flooded - which reads as a measure rather than a
+   swatch, and leaves the text on a predictable ground at both ends. */
+/* --fill-soft, not --cal-0. The empty-day colour is a hair off the card it sits
+   on (#1e1e2c against #1c1c1e on dark) and gets away with it in a dense grid,
+   where the gaps draw the squares. A full-width row has no neighbours to define
+   it, so it needs a fill that is actually a different colour from the card. */
+.cal-day[data-level="bar"] { background: var(--fill-soft); }
+.cal-day[data-level="bar"]::before {
+  content: '';
+  position: absolute;
+  background: var(--cal-2);
+  opacity: .5;
+  pointer-events: none;
+}
+.cal-week[data-level="bar"]::before {
+  inset: 0 auto 0 0;
+  width: calc(var(--fill, 0) * 100%);
+  border-radius: inherit;
+}
+.cal-month[data-level="bar"]::before {
+  inset: auto 0 0 0;
+  height: calc(var(--fill, 0) * 100%);
+  border-radius: 0 0 13px 13px;
+}
+/* Above the bar, so a figure never sits half-in and half-out of it. */
+.cal-week .cal-num, .cal-week .cal-sum,
+.cal-month .cal-num, .cal-month .cal-sum { position: relative; z-index: 1; }
 
 /* Twelve months read best three across: four rows, and "Sep" fits without the
    cell having to shrink its figure. */
@@ -767,6 +797,9 @@ button {
 .cal-day.cal-month {
   aspect-ratio: 1 / .78;
   border-radius: 13px;
+  overflow: hidden;
+  align-content: center;
+  gap: 2px;
 }
 .cal-month .cal-num { font-size: var(--t-sub); }
 .cal-month .cal-sum { font-size: 12px; }
@@ -775,6 +808,17 @@ button {
 .cal-day[data-level="2"] { background: var(--cal-2); }
 .cal-day[data-level="3"] { background: var(--cal-3); color: var(--cal-3-ink); }
 .cal-day[data-level="future"] { background: none; color: var(--muted); opacity: .35; }
+/* A week or month that has not happened still keeps its cell. Dropping the
+   background is right for a day, where the grid's shape is held by the squares
+   around it - a full-width row has no such neighbours, and four backgroundless
+   rows read as a broken card rather than an empty one.
+   This has to come after the rule above: same specificity, so source order is
+   what decides it. */
+.cal-week[data-level="future"],
+.cal-month[data-level="future"] {
+  background: var(--fill-soft);
+  opacity: .55;
+}
 /* The date leads and the amount follows. They used to be the same size-ish, the
    same weight and the same colour, which left two numbers in one small cell with
    nothing saying which was which. */

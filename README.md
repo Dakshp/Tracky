@@ -388,6 +388,32 @@ A year of months is the same idea one step out: twelve cells, three across, each
 carrying its month's total, shaded on the same four steps. **Year keeps the chart
 alone**, because a grid of years is not a shape anyone reads.
 
+### Colour does not scale with the area it fills
+
+The four-step ramp was designed for a 44px day cell, where a saturated fill is a
+small accent. Reused across a full-width week row it became a wall — decoration
+rather than a quantity. So the large cells carry the amount as a **length**
+instead: a bar filling a week row from the left, and a month cell from the
+bottom, on a calm base. Length compares better than shade at that size, and it
+leaves the figures on a predictable ground at both ends.
+
+Two bugs on the way there had the same shape, and it is the same shape as the
+segmented control's and the tab pill's: **a colour picked for a dense grid of
+small squares, reused where nothing surrounds it.**
+
+- `--cal-0` is a hair off the card it sits on — `#1e1e2c` against `#1c1c1e` on
+  dark. In a dense grid that is fine, because the *gaps* draw the squares. A
+  full-width row has no neighbours, so it needs a fill that is genuinely a
+  different colour from the card.
+- Future cells dropped their background entirely, which is right for a day and
+  left four backgroundless rows reading as a broken card rather than an empty
+  one. That override also had to be moved *after* the general rule it beats:
+  equal specificity, so source order decides.
+
+The suite now checks that no cell is transparent or simply the card colour, and
+that the largest value fills its cell while smaller ones fill proportionally
+less.
+
 ### The straddle
 
 The weeks a month shows are the ones that **overlap** it, not the ones inside it.

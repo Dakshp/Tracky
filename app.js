@@ -2,7 +2,7 @@
 // two are what tell a fixed build apart from a cached one. Where a release only
 // rewrites visible copy, the copy itself is the tell, so this may hold while
 // CACHE takes a suffix instead.
-const APP_VERSION = 38;
+const APP_VERSION = 39;
 
 const state = {
   date: todayStr(),
@@ -848,8 +848,12 @@ function buildWeekGrid(month, selected, categoryId) {
     cell.dataset.date = period;
     cell.dataset.amount = String(totalMinor);
     cell.disabled = future;
-    const step = totalMinor > 0 ? Math.max(1, Math.ceil((totalMinor / max) * (CAL_STEPS - 1))) : 0;
-    cell.dataset.level = future ? 'future' : String(step);
+    // A proportion rather than a step. A big surface flooded with one of the
+    // four shades is a wall of colour: the ramp was designed for a 44px day
+    // cell, and the same fill across a full-width row reads as decoration
+    // rather than as a quantity. Length carries it better at this size.
+    cell.style.setProperty('--fill', future ? '0' : (totalMinor / max).toFixed(3));
+    cell.dataset.level = future ? 'future' : 'bar';
     if (period === Store.periodOf(today, 'week')) cell.classList.add('is-today');
     if (period === selected) {
       cell.classList.add('is-selected');
@@ -858,7 +862,13 @@ function buildWeekGrid(month, selected, categoryId) {
 
     const num = document.createElement('span');
     num.className = 'cal-num';
-    num.textContent = `${Number(period.slice(8))}–${Number(end.slice(8))} ${fmtUTC(parseUTC(end), { month: 'short' })}`;
+    // "7 – 13 Sep" inside one month, "31 Aug – 6 Sep" across two. Naming the
+    // month twice when it has not changed is noise on every row.
+    const sameMonth = period.slice(0, 7) === end.slice(0, 7);
+    const mon = (iso) => fmtUTC(parseUTC(iso), { month: 'short' });
+    num.textContent = sameMonth
+      ? `${Number(period.slice(8))} – ${Number(end.slice(8))} ${mon(end)}`
+      : `${Number(period.slice(8))} ${mon(period)} – ${Number(end.slice(8))} ${mon(end)}`;
     cell.appendChild(num);
 
     if (!future) {
@@ -895,8 +905,8 @@ function buildMonthGrid(year, selected, categoryId) {
     cell.dataset.date = period;
     cell.dataset.amount = String(totalMinor);
     cell.disabled = future;
-    const step = totalMinor > 0 ? Math.max(1, Math.ceil((totalMinor / max) * (CAL_STEPS - 1))) : 0;
-    cell.dataset.level = future ? 'future' : String(step);
+    cell.style.setProperty('--fill', future ? '0' : (totalMinor / max).toFixed(3));
+    cell.dataset.level = future ? 'future' : 'bar';
     if (period === thisMonth) cell.classList.add('is-today');
     if (period === selected) {
       cell.classList.add('is-selected');
