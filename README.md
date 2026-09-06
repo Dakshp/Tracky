@@ -545,12 +545,24 @@ mode here is a near-miss, and a near-miss is not something you can see by eye.
 
 ## The tab bar
 
-**Edge to edge along the bottom**, the way iOS tab bars are. The floating capsule
-it replaced was the last thing down here speaking a different design language:
-inset from the sides, fully rounded, with a drop shadow and a rim on all four
-edges. Pinned to the bottom edge, it has no left or right edge to catch light on
-and nothing underneath to cast a shadow onto, so what is left is the blur, the
-tint, and one hairline along the top where content actually meets it.
+**A capsule floating clear of every edge.** It went edge-to-edge for exactly one
+version, on a misreading of the reference, and that was wrong: the bar being
+visibly separate from the screen edge, with content running underneath and past
+it on both sides, is most of what makes it read as glass laid over the app rather
+than part of the frame. So it is an object — four edges to catch light on and
+something underneath to cast onto — and it keeps its specular rim and its lift.
+
+**The selected tab sits on its own lighter pane.** That was removed once too, on
+the reasoning that Apple marks selection by colour alone. True of the old tab
+bar; not true of the floating one, where the reference marks it with exactly this
+pane. It also earns its place on legibility, since colour alone is a weak signal
+for anyone who does not separate two blues easily.
+
+And the selected tab's ink is **full contrast rather than the accent**. The pane
+lightens the ground under the label, and the accent is a pale indigo in dark
+mode; measured together they came to 3.66:1. The reference does the same thing
+for the same reason — its selected glyph is plain white on a lighter pill, not a
+tinted one. Measured after: 9.5:1.
 
 ### Shrinking out of the way
 
@@ -635,8 +647,17 @@ colour, and it is no worse than what shipped before.
 
 ## Search
 
-A field at the top of Compare, above the zoom and the category focus, because it
-narrows what those two then operate on.
+A field at the **bottom** of Compare's three controls — zoom, then category, then
+search. The zoom and the category are set almost every time the screen is opened;
+the search is reached for when someone wants one particular thing, which is less
+often, so it sits last.
+
+All three are centred, which is what makes them read as one group rather than
+three controls aligned to three different edges. The search field follows the iOS
+convention of centring its placeholder and sliding it left once there is
+something in it — which is also why the placeholder is one short word: with the
+text centred, a magnifier pinned to the left edge captions empty space, and one
+placed by guesswork lands on top of the placeholder.
 
 It exists for a question the app could not answer: someone who writes "Milk" in
 the note every time they order milk wants to know **what milk costs them** — a

@@ -114,20 +114,6 @@
     <div class="scroll-area">
       <h1 class="large-title">Stats</h1>
       <!-- One filter row, above everything it scopes. -->
-      <!-- Above the zoom and the category focus, because it narrows what those
-           two then operate on. -->
-      <div class="search-row">
-        <svg class="search-icon" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-          <circle cx="11" cy="11" r="7" stroke="currentColor" stroke-width="2"/>
-          <path d="M16.5 16.5L21 21" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
-        </svg>
-        <input type="search" id="cmpSearch" class="search-input"
-               placeholder="Search notes, categories, amounts"
-               autocomplete="off" autocorrect="off" autocapitalize="none" spellcheck="false"
-               aria-label="Search expenses">
-        <button type="button" id="cmpSearchClear" class="search-clear" aria-label="Clear search" hidden>&times;</button>
-      </div>
-
       <div class="filter-row">
         <div class="segmented" id="granularityToggle" role="group" aria-label="Compare by">
           <button type="button" data-gran="day" class="active">Day</button>
@@ -138,6 +124,21 @@
         <select id="focusCategory" aria-label="Focus one category">
           <option value="">All categories</option>
         </select>
+
+        <!-- Last of the three. The zoom and the category are what someone sets
+             every time they open this screen; the search is what they reach for
+             when they want one particular thing, which is less often. -->
+        <div class="search-row">
+          <svg class="search-icon" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+            <circle cx="11" cy="11" r="7" stroke="currentColor" stroke-width="2"/>
+            <path d="M16.5 16.5L21 21" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+          </svg>
+          <input type="search" id="cmpSearch" class="search-input"
+                 placeholder="Search"
+                 autocomplete="off" autocorrect="off" autocapitalize="none" spellcheck="false"
+                 aria-label="Search expenses">
+          <button type="button" id="cmpSearchClear" class="search-clear" aria-label="Clear search" hidden>&times;</button>
+        </div>
       </div>
 
       <div class="hero-card">

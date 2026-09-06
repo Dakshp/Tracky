@@ -9,6 +9,7 @@
   /* Ink for text sitting ON the accent. White works on the light accent and
      fails badly on the dark one, which is far paler - see the dark block. */
   --on-primary: #ffffff;
+  --tab-pill: rgba(255, 255, 255, .72);
   --danger: #d93b3b;
   /* iOS grouped-background pairing: the page is the grey, cards are the white.
      Surfaces are separated by colour and a hairline, never by a drop shadow -
@@ -106,6 +107,7 @@
   /* Dark mode lifts the accent to #8f96ff so it reads against black, which
      leaves white text on it at 2.63:1. Near-black on it is 7.5:1. */
   --on-primary: #14141a;
+  --tab-pill: rgba(255, 255, 255, .13);
   --danger: #ff6b6b;
   /* True black, not dark grey. On the OLED panel in every iPhone since the X
      the pixels are simply off, which is why Apple's dark mode goes here and why
@@ -142,24 +144,32 @@
   --tint-9: #b2b6c4; --tint-9-soft: #2a2c33;
 }
 
-/* The tab bar's material. It spans the bottom edge rather than floating above
-   it, so it takes the blur and the tint and none of the object-ness: no lift to
-   cast, and no left or right edge to catch light on. What is left is one
-   hairline along the top, where the content actually meets it. */
+/* The tab bar floats over the content as a capsule, which is what iOS 26 and the
+   apps following it do - it is not welded to the bottom edge. So it is an object
+   again: it has four edges to catch light on and something underneath to cast
+   onto, and it gets the rim and the lift back. */
 .tabbar {
   background: var(--glass-fill);
   -webkit-backdrop-filter: var(--glass-blur);
   backdrop-filter: var(--glass-blur);
+  box-shadow: var(--glass-lift);
   position: relative;
 }
 
+/* The specular rim: a 1px gradient border, bright where light would land and
+   fading away underneath. A masked pseudo-element rather than `border`, so it
+   can be a gradient rather than one flat colour. */
 .tabbar::after {
   content: '';
   position: absolute;
-  inset: 0 0 auto 0;
-  height: 1px;
-  background: var(--glass-rim-top);
-  opacity: .5;
+  inset: 0;
+  border-radius: inherit;
+  padding: 1px;
+  background: linear-gradient(160deg, var(--glass-rim-top), var(--glass-rim-bottom) 55%, transparent);
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  mask-composite: exclude;
   pointer-events: none;
 }
 
@@ -526,6 +536,11 @@ button {
   background: var(--fill-soft);
   font-size: var(--t-sub);
   font-weight: 500;
+  /* Centred to match the segmented control above it. Left-aligned, it was the
+     one item in the stack sitting to a different edge, which made three
+     controls look like three unrelated things. */
+  text-align: center;
+  text-align-last: center;
 }
 
 /* Two shapes for the same days, so the control is a switch rather than a link.
@@ -1166,25 +1181,28 @@ button {
 /* A detached capsule rather than a bar welded to the screen edge: content
    passes underneath and shows through, which is the whole point of the
    material. */
-/* Edge to edge along the bottom, the way every iOS app with a tab bar does it.
-   The floating capsule it replaced was the last thing down here that belonged to
-   a different design language. */
+/* A capsule floating clear of the edges, with the content running underneath and
+   past it on both sides. Edge-to-edge was the wrong read of the reference: the
+   bar being visibly separate from the screen edge is most of what makes it look
+   like glass laid on the app rather than part of the chrome. */
 .tabbar {
   position: fixed;
-  left: 0;
-  right: 0;
-  bottom: 0;
+  left: 12px;
+  right: 12px;
+  bottom: calc(env(safe-area-inset-bottom) + 10px);
   display: flex;
   align-items: stretch;
-  height: calc(var(--bar) + env(safe-area-inset-bottom));
-  padding: 0 6px env(safe-area-inset-bottom);
-  border-radius: 0;
+  height: var(--bar);
+  padding: 0 5px;
+  border-radius: calc(var(--bar) / 2);
   z-index: 20;
-  transition: height .22s cubic-bezier(.25, .9, .3, 1);
+  transition: height .22s cubic-bezier(.25, .9, .3, 1),
+              border-radius .22s cubic-bezier(.25, .9, .3, 1);
 }
 
 .tab {
   flex: 1;
+  position: relative;
   padding: 0;
   border-radius: 22px;
   display: flex;
@@ -1204,11 +1222,30 @@ button {
   text-shadow: 0 0 2px var(--glass-halo), 0 0 5px var(--glass-halo), 0 0 11px var(--glass-halo);
   transition: color .18s ease;
 }
-/* The selected tab gets its own lighter pane inside the capsule, the way an
-   iOS segmented selection sits within its track. */
-/* Tinted glyph and label, no filled pill behind it. Apple marks the selected tab
-   by colour alone; the pill was the last obviously non-iOS thing down here. */
-.tab.active { color: var(--primary); }
+/* The selected tab sits on its own lighter pane. This was removed once, on the
+   reasoning that Apple marks selection by colour alone - which was true of the
+   old tab bar and is not true of the floating one, where the reference marks it
+   with exactly this. It also earns its place on legibility: colour alone is a
+   weak signal for anyone who does not separate these two blues easily. */
+.tab::before {
+  content: '';
+  position: absolute;
+  inset: 4px 3px;
+  border-radius: calc(var(--bar) / 2);
+  background: var(--tab-pill);
+  opacity: 0;
+  transition: opacity .18s ease;
+  pointer-events: none;
+}
+.tab.active::before { opacity: 1; }
+/* Above the pane, not under it. */
+.tab-icon, .tab span { position: relative; z-index: 1; }
+/* Full-contrast ink rather than the accent, now that the pane carries the
+   selection. The pane lightens the ground under the label, and the accent is a
+   pale indigo in dark mode: the two together measured 3.66:1. The reference
+   does the same thing for the same reason - its selected glyph is plain white
+   on a lighter pill, not a tinted one. */
+.tab.active { color: var(--text); }
 .tab:active { opacity: .55; }
 /* Stroked SVG rather than a Unicode glyph: consistent weight across platforms,
    and it inherits the tab's colour on selection. */
@@ -1400,15 +1437,27 @@ body.bar-shrunk .tab { gap: 0; }
   position: relative;
   display: flex;
   align-items: center;
-  margin-bottom: 10px;
 }
 .search-icon {
   position: absolute;
-  left: 12px;
+  /* Sits just left of the centred word, not at a fixed inset: with the text
+     centred, an icon pinned to the left edge captions empty space, and one
+     placed by guesswork lands on top of the placeholder. The offset is half the
+     word plus a gap, which is why the placeholder is one short word. */
+  left: 50%;
+  transform: translateX(-52px);
   width: 18px;
   height: 18px;
   color: var(--muted);
   pointer-events: none;
+  transition: left .18s ease, transform .18s ease;
+}
+/* Once there is something to search for, the field behaves like a field again:
+   the icon returns to the left edge and the text reads from there. */
+.search-row:focus-within .search-icon,
+.search-row.has-query .search-icon {
+  left: 12px;
+  transform: none;
 }
 .search-input {
   width: 100%;
@@ -1424,6 +1473,9 @@ body.bar-shrunk .tab { gap: 0; }
   appearance: none;
 }
 .search-input::placeholder { color: var(--muted); }
+.search-input { text-align: center; transition: text-indent .18s ease; }
+.search-row:focus-within .search-input,
+.search-row.has-query .search-input { text-align: left; }
 .search-input:focus { outline: 2px solid var(--primary); outline-offset: -2px; }
 /* Safari draws its own clear button on type=search, which would sit beside
    ours and do the same job with half the tap target. */

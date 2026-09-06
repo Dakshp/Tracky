@@ -2,7 +2,7 @@
 // two are what tell a fixed build apart from a cached one. Where a release only
 // rewrites visible copy, the copy itself is the tell, so this may hold while
 // CACHE takes a suffix instead.
-const APP_VERSION = 31;
+const APP_VERSION = 32;
 
 const state = {
   date: todayStr(),
@@ -1456,13 +1456,20 @@ function initCompareControls() {
   // breakdown and the entry list, and a phone typing "groceries" would do that
   // nine times for eight results nobody read.
   let searchTimer = null;
+  const row = search.closest('.search-row');
+  const markQuery = () => {
+    clear.hidden = !search.value;
+    // Keeps the centred placeholder from snapping back over typed text when the
+    // field loses focus.
+    row.classList.toggle('has-query', Boolean(search.value));
+  };
   const applySearch = () => {
     searchQuery = search.value.trim();
-    clear.hidden = !search.value;
+    markQuery();
     renderCompare();
   };
   search.addEventListener('input', () => {
-    clear.hidden = !search.value;
+    markQuery();
     clearTimeout(searchTimer);
     searchTimer = setTimeout(applySearch, 160);
   });
