@@ -2,7 +2,7 @@
 // two are what tell a fixed build apart from a cached one. Where a release only
 // rewrites visible copy, the copy itself is the tell, so this may hold while
 // CACHE takes a suffix instead.
-const APP_VERSION = 30;
+const APP_VERSION = 31;
 
 const state = {
   date: todayStr(),
@@ -2489,6 +2489,9 @@ function showScreen(name, direction) {
   const next = el(`screen-${name}`);
   next.classList.remove('hidden');
   document.querySelectorAll('.tab').forEach((t) => t.classList.toggle('active', t.dataset.screen === name));
+  // A new screen starts at its top, so the bar starts at full height. Without
+  // this it would arrive shrunk because the screen you left was scrolled.
+  document.body.classList.remove('bar-shrunk');
   if (name === 'stats') renderCompare();
   if (name === 'settings') renderSettings();
 
@@ -2524,7 +2527,37 @@ function renderAll() {
 
 // ---------- Init ----------
 
+/**
+ * Shrink the tab bar while the reader is moving away from the top.
+ *
+ * Direction, not position: it is about which way you are going, so the bar comes
+ * straight back the moment you turn around rather than making you scroll all the
+ * way up for it. Near the top it is always full size, because there is nothing
+ * to get out of the way of there.
+ */
+function watchTabBar() {
+  const ALWAYS_FULL_ABOVE = 40;   // rubber-banding at the top is not a scroll
+  const JITTER = 5;               // a fingertip resting on the glass is not either
+  document.querySelectorAll('.screen').forEach((screen) => {
+    const area = screen.querySelector('.scroll-area');
+    if (!area) return;
+    let last = area.scrollTop;
+    area.addEventListener('scroll', () => {
+      const y = area.scrollTop;
+      const dy = y - last;
+      if (Math.abs(dy) < JITTER) return;
+      last = y;
+      if (y <= ALWAYS_FULL_ABOVE) {
+        document.body.classList.remove('bar-shrunk');
+        return;
+      }
+      document.body.classList.toggle('bar-shrunk', dy > 0);
+    }, { passive: true });
+  });
+}
+
 function init() {
+  watchTabBar();
   // Swipe between tabs, the way a photo feed pages between them. Attached to
   // each screen, but standing down whenever the drag started on something that
   // owns horizontal gestures of its own - the chart, the calendar, the headline

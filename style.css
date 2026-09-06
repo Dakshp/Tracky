@@ -22,6 +22,11 @@
   --fill-soft: rgba(118, 118, 128, .12);
   --shadow: none;
   --radius: 16px;
+  /* The tab bar's height, and with it where the add button sits. Declared once
+     at the root because the button is not inside the bar and would otherwise
+     have to repeat the number - which is how the two drift apart. */
+  --bar: 60px;
+  --bar-icon: 23px;
 
   /* One type scale, used everywhere. Everything at 13-17px in the same weight is
      what made the old screens read as one flat wall of text. */
@@ -137,31 +142,24 @@
   --tint-9: #b2b6c4; --tint-9-soft: #2a2c33;
 }
 
-/* One place to apply the material, so every glass surface stays consistent. */
-.glass,
+/* The tab bar's material. It spans the bottom edge rather than floating above
+   it, so it takes the blur and the tint and none of the object-ness: no lift to
+   cast, and no left or right edge to catch light on. What is left is one
+   hairline along the top, where the content actually meets it. */
 .tabbar {
   background: var(--glass-fill);
   -webkit-backdrop-filter: var(--glass-blur);
   backdrop-filter: var(--glass-blur);
-  box-shadow: var(--glass-lift);
   position: relative;
 }
 
-/* The specular rim: a 1px gradient border, bright at the top where light would
-   land and fading away underneath. Painted with a masked pseudo-element rather
-   than `border`, so it can be a gradient rather than one flat colour. */
-.glass::after,
 .tabbar::after {
   content: '';
   position: absolute;
-  inset: 0;
-  border-radius: inherit;
-  padding: 1px;
-  background: linear-gradient(160deg, var(--glass-rim-top), var(--glass-rim-bottom) 55%, transparent);
-  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
-  -webkit-mask-composite: xor;
-  mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
-  mask-composite: exclude;
+  inset: 0 0 auto 0;
+  height: 1px;
+  background: var(--glass-rim-top);
+  opacity: .5;
   pointer-events: none;
 }
 
@@ -169,11 +167,11 @@
    iOS to reduce transparency. Both end up fully opaque rather than leaving a
    see-through panel with text showing through the labels. */
 @supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
-  .glass, .tabbar { background: var(--surface); }
+  .tabbar { background: var(--surface); }
 }
 
 @media (prefers-reduced-transparency: reduce) {
-  .glass, .tabbar {
+  .tabbar {
     background: var(--surface);
     -webkit-backdrop-filter: none;
     backdrop-filter: none;
@@ -317,9 +315,12 @@ button {
   overscroll-behavior-x: none;
   -webkit-overflow-scrolling: touch;
   /* There is no bar at the top any more, so the top padding only has to clear
-     the notch and give the title air. The bottom still clears the tab bar and
-     the add button, which do float. */
-  padding: calc(env(safe-area-inset-top) + 22px) 16px calc(env(safe-area-inset-bottom) + 184px);
+     the notch and give the title air. The bottom clears the tab bar and the add
+     button - and is deliberately a CONSTANT rather than following --bar: a
+     padding that shrank with the bar would move the content under the reader's
+     finger, fighting the very gesture that shrank it, and on a short list could
+     oscillate. It is sized for the bar at full height. */
+  padding: calc(env(safe-area-inset-top) + 22px) 16px calc(env(safe-area-inset-bottom) + 168px);
 }
 
 /* ---------- Cards ---------- */
@@ -1077,7 +1078,8 @@ button {
   position: absolute;
   left: 50%;
   transform: translateX(-50%);
-  bottom: calc(env(safe-area-inset-bottom) + 88px);
+  bottom: calc(env(safe-area-inset-bottom) + var(--bar) + 20px);
+  transition: bottom .22s cubic-bezier(.25, .9, .3, 1);
   width: 66px;
   height: 66px;
   border-radius: 33px;
@@ -1164,24 +1166,33 @@ button {
 /* A detached capsule rather than a bar welded to the screen edge: content
    passes underneath and shows through, which is the whole point of the
    material. */
+/* Edge to edge along the bottom, the way every iOS app with a tab bar does it.
+   The floating capsule it replaced was the last thing down here that belonged to
+   a different design language. */
 .tabbar {
   position: fixed;
-  left: 14px;
-  right: 14px;
-  bottom: calc(env(safe-area-inset-bottom) + 10px);
+  left: 0;
+  right: 0;
+  bottom: 0;
   display: flex;
-  padding: 7px 6px;
-  border-radius: 30px;
+  align-items: stretch;
+  height: calc(var(--bar) + env(safe-area-inset-bottom));
+  padding: 0 6px env(safe-area-inset-bottom);
+  border-radius: 0;
   z-index: 20;
+  transition: height .22s cubic-bezier(.25, .9, .3, 1);
 }
 
 .tab {
   flex: 1;
-  padding: 7px 0 6px;
+  padding: 0;
   border-radius: 22px;
   display: flex;
   flex-direction: column;
   align-items: center;
+  /* Centred in whatever height the bar currently has, so shrinking moves the
+     icon smoothly to the middle rather than leaving it pinned to the top. */
+  justify-content: center;
   gap: 3px;
   font-size: 10.5px;
   font-weight: 550;
@@ -1205,9 +1216,37 @@ button {
    and cannot get it from text-shadow. */
 .tab .tab-icon { filter: drop-shadow(0 0 2px var(--glass-halo)) drop-shadow(0 0 4px var(--glass-halo)) drop-shadow(0 0 8px var(--glass-halo)); }
 .tab-icon {
-  width: 23px;
-  height: 23px;
+  width: var(--bar-icon);
+  height: var(--bar-icon);
   display: block;
+  transition: width .22s cubic-bezier(.25, .9, .3, 1), height .22s cubic-bezier(.25, .9, .3, 1);
+}
+
+/* ---------- The bar shrinking out of the way ----------
+   Reading a long list, the bar is the least useful thing on screen; on the way
+   back up it is the most. So it gives up its labels and some height while you
+   are moving away from the top, and takes them back the moment you turn around.
+
+   It shrinks rather than hides. Vanishing chrome makes people hunt for it, and
+   this bar is the only way between the three screens. */
+body.bar-shrunk {
+  --bar: 40px;
+  --bar-icon: 21px;
+}
+.tab span {
+  max-height: 14px;
+  overflow: hidden;
+  transition: max-height .22s cubic-bezier(.25, .9, .3, 1), opacity .16s ease;
+}
+body.bar-shrunk .tab span {
+  max-height: 0;
+  opacity: 0;
+}
+body.bar-shrunk .tab { gap: 0; }
+
+/* Nobody asked for the bar to move while they are reading. */
+@media (prefers-reduced-motion: reduce) {
+  .tabbar, .tab-icon, .tab span { transition: none; }
 }
 
 /* ---------- Add sheet ---------- */

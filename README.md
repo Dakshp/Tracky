@@ -543,6 +543,46 @@ All four values — the two tags, `--bg` in both themes, and the manifest's
 `theme_color` — are asserted equal by the status-bar suite, because the failure
 mode here is a near-miss, and a near-miss is not something you can see by eye.
 
+## The tab bar
+
+**Edge to edge along the bottom**, the way iOS tab bars are. The floating capsule
+it replaced was the last thing down here speaking a different design language:
+inset from the sides, fully rounded, with a drop shadow and a rim on all four
+edges. Pinned to the bottom edge, it has no left or right edge to catch light on
+and nothing underneath to cast a shadow onto, so what is left is the blur, the
+tint, and one hairline along the top where content actually meets it.
+
+### Shrinking out of the way
+
+Reading a long list, the bar is the least useful thing on screen; on the way back
+up it is the most. So it gives up its labels and a third of its height while you
+are moving away from the top, and takes them back the moment you turn around.
+
+**Direction, not position.** It is about which way you are going, so turning
+around restores it immediately rather than making you scroll all the way to the
+top. Near the top it is always full, because there is nothing to get out of the
+way of there.
+
+**It shrinks rather than hides.** Chrome that vanishes makes people hunt for it,
+and this bar is the only way between the three screens.
+
+Two details that keep it from fighting the reader:
+
+- **The scroll padding is a constant, not a function of the bar's height.**
+  Padding that shrank with the bar would move the content under the finger
+  mid-scroll — fighting the very gesture that shrank it, and on a short list
+  oscillating.
+- **A jitter floor and a top threshold.** A fingertip resting on the glass is not
+  a scroll, and rubber-banding at the top is not a direction.
+
+One variable, `--bar`, carries the height. The add button is not inside the bar
+and would otherwise have to repeat the number, which is how two things that must
+agree drift apart; instead it reads the same variable and moves with it.
+
+Switching screens resets the bar to full, since the new screen starts at its top.
+And `prefers-reduced-motion` turns the whole animation off: nobody asked for the
+furniture to move while they are reading.
+
 ## The glass
 
 The tab bar is the one piece of chrome left floating over the page, and it is
