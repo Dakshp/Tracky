@@ -560,10 +560,16 @@ white pane on whitish glass measuring **1.01:1** — present in the DOM and abse
 on the screen. Dark was little better at 1.15:1, the two inks differed by 1.50:1,
 and both weights were 550, so nothing was doing the work.
 
-Now: pane ~1.48:1, ink 2.9:1 light and 2.5:1 dark, weight 700 against 550. And
-**which way the pane goes is decided by the bar, not by convention** — lighter
-than its ground on dark, darker on light, because a white pane on white glass is
-not a pane.
+Now: ink 2.9:1 light and 2.5:1 dark, weight 700 against 550, and a pane that
+separates itself **by tone on dark and by lift on light**.
+
+That split is the part worth keeping. Darkening the pane so it registers by tone
+on a light bar does measure better — and looks like a smudge rather than a
+selection. What works there is the answer iOS uses for the same problem: keep the
+pane bright, make it **opaque and raised** where the rest of the bar is
+see-through, and let an edge and a shadow do what a tone cannot. It reads as
+1.03:1 to a tone comparison and is unmistakable on screen, which is a useful
+reminder that the measurement is a floor, not the design.
 
 **The selected tab sits on its own pane.** That was removed once too, on
 the reasoning that Apple marks selection by colour alone. True of the old tab
