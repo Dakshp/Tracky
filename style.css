@@ -765,36 +765,76 @@ button {
   grid-auto-flow: column;
   justify-content: space-between;
   align-items: center;
-  padding: 0 15px;
+  /* Enough to hold the label off a 7-wide row's ends, and no more. It was 15px,
+     which on its own made the row read as a list item from a different screen
+     rather than as a day cell that had grown. */
+  padding: 0 11px;
   overflow: hidden;
 }
-.cal-week .cal-num { font-size: var(--t-sub); }
-.cal-week .cal-sum { font-size: var(--t-sub); font-weight: 600; }
+/* Type is NOT restated here. A week cell used to set both its label and its
+   figure to var(--t-sub) - 14.5px for each, and the figure at 600 - which threw
+   away the whole hierarchy the day cell establishes (13px/700 leading, 11px/500
+   following) and was most of why the two zooms looked like different screens.
+   Inheriting .cal-num and .cal-sum unchanged is the point: one scale for every
+   zoom, so only the shape of the cell changes under you. */
 
 /* The quantity, as a length. Both large cells stay on the calm base colour and
    carry a bar instead of being flooded - which reads as a measure rather than a
-   swatch, and leaves the text on a predictable ground at both ends. */
-/* --fill-soft, not --cal-0. The empty-day colour is a hair off the card it sits
-   on (#1e1e2c against #1c1c1e on dark) and gets away with it in a dense grid,
-   where the gaps draw the squares. A full-width row has no neighbours to define
-   it, so it needs a fill that is actually a different colour from the card. */
-.cal-day[data-level="bar"] { background: var(--fill-soft); }
+   swatch, and leaves the text on a predictable ground at both ends.
+
+   Weeks in a month are the reason it cannot be the day grid's four flat steps:
+   day-to-day spending swings hard and has real zeros, so four levels sort it
+   usefully, but week-to-week totals sit close together and would all quantise
+   onto the same step - five identical rows, telling you nothing.
+
+   The base is --cal-0, the SAME as an empty day cell, and the bar is --cal-2,
+   the same third step. It used to be --fill-soft under a half-opacity --cal-2,
+   which is a lighter grey than anything in the day grid under a wash dimmer
+   than anything in it: the same ₹100 read as a bright cell at day zoom and a
+   muted pill at week zoom. Sharing the ramp is what makes the two zooms look
+   like one control. --cal-2 at full strength also carries both inks - measured
+   at 6.9:1 dark and 8.1:1 light - so the label can sit on the bar and the
+   figure beyond its end without either needing to flip. */
+.cal-day[data-level="bar"] { background: var(--cal-0); }
 .cal-day[data-level="bar"]::before {
   content: '';
   position: absolute;
   background: var(--cal-2);
-  opacity: .5;
   pointer-events: none;
 }
 .cal-week[data-level="bar"]::before {
   inset: 0 auto 0 0;
   width: calc(var(--fill, 0) * 100%);
-  border-radius: inherit;
+  /* Rounded where it starts, square where it stops. `border-radius: inherit`
+     rounded BOTH ends, which made a half-filled row read as a shorter pill
+     nested inside the cell rather than as a level filled up to here. At 100%
+     the square end is rounded off by the cell's own overflow: hidden - the same
+     way the month cell's bottom-up bar is handled. */
+  border-radius: 11px 0 0 11px;
 }
 .cal-month[data-level="bar"]::before {
   inset: auto 0 0 0;
   height: calc(var(--fill, 0) * 100%);
-  border-radius: 0 0 13px 13px;
+  border-radius: 0 0 11px 11px;
+}
+/* Selected, the fill pulls in by the ring's width so the ring keeps the cell's
+   base colour underneath it - see the selection rules. Unselected cells still
+   fill edge to edge, which is what a day cell does, so nothing changes about
+   the grid at rest. */
+/* 5px, not the ring's own 2.5px. Abutting the ring exactly left no base colour
+   between the two, so the ring's inner neighbour was the bar at 2.8:1 and
+   whether any gap appeared at all came down to how the browser rounded a
+   half-pixel border. 5px leaves a real 2.5px groove, and the ring reads at
+   6.2:1 dark and 5.5:1 light against it. */
+.cal-week.is-selected[data-level="bar"]::before {
+  inset: 5px auto 5px 5px;
+  width: calc(var(--fill, 0) * (100% - 10px));
+  border-radius: 6px 0 0 6px;
+}
+.cal-month.is-selected[data-level="bar"]::before {
+  inset: auto 5px 5px 5px;
+  height: calc(var(--fill, 0) * (100% - 10px));
+  border-radius: 0 0 6px 6px;
 }
 /* Above the bar, so a figure never sits half-in and half-out of it. */
 .cal-week .cal-num, .cal-week .cal-sum,
@@ -806,31 +846,20 @@ button {
   grid-template-columns: repeat(3, minmax(0, 1fr));
 }
 .cal-day.cal-month {
-  border-radius: 13px;
   overflow: hidden;
   align-content: center;
-  gap: 2px;
 }
-.cal-month .cal-num { font-size: var(--t-sub); }
-/* A four-digit year needs a touch less than a three-letter month. */
-.cal-year .cal-num { font-size: 15px; letter-spacing: -.02em; }
-.cal-month .cal-sum { font-size: 12px; }
 
 .cal-day[data-level="1"] { background: var(--cal-1); }
 .cal-day[data-level="2"] { background: var(--cal-2); }
 .cal-day[data-level="3"] { background: var(--cal-3); color: var(--cal-3-ink); }
 .cal-day[data-level="future"] { background: none; color: var(--muted); opacity: .35; }
-/* A week or month that has not happened still keeps its cell. Dropping the
-   background is right for a day, where the grid's shape is held by the squares
-   around it - a full-width row has no such neighbours, and four backgroundless
-   rows read as a broken card rather than an empty one.
-   This has to come after the rule above: same specificity, so source order is
-   what decides it. */
-.cal-week[data-level="future"],
-.cal-month[data-level="future"] {
-  background: var(--fill-soft);
-  opacity: .55;
-}
+/* A week or month that has not happened is treated exactly like a day that has
+   not: no cell at all, just a faded label. It used to keep a --fill-soft pane,
+   on the reasoning that a full-width row has no neighbours to hold the grid's
+   shape - but with the weekday header above it and its own siblings around it,
+   it has both, and the pane was the largest single reason the week grid read as
+   a stack of grey pills next to the day grid's faint tiles. */
 /* The date leads and the amount follows. They used to be the same size-ish, the
    same weight and the same colour, which left two numbers in one small cell with
    nothing saying which was which. */
@@ -870,8 +899,58 @@ button {
    the obvious alternative, but the cell already carries the day's total under
    the date and there is no room below it. */
 .cal-day.is-today .cal-num { color: var(--primary); font-weight: 800; }
+/* Level 2 as well as level 3, and it took measuring the day grid itself to
+   catch it: --primary over --cal-2 is 2.63:1 dark and 2.80:1 light. Today only
+   has to land on a middling day for its own number to be the least legible
+   thing in the grid. --text reads at 6.93:1 and 8.17:1 there. */
+.cal-day[data-level="2"].is-today .cal-num { color: var(--text); text-decoration: underline; }
 .cal-day[data-level="3"].is-today .cal-num { color: var(--cal-3-ink); text-decoration: underline; }
-.cal-day.is-selected { box-shadow: inset 0 0 0 2.5px var(--primary); }
+/* Same swap, same reason, on a cell whose label sits over the fill bar. The
+   accent marks today well on a calm ground and fails on a bright one:
+   --primary over the bar's --cal-2 measured 2.63:1 dark and 2.80:1 light -
+   indigo on indigo, the same fault as the old tab pill and the old segmented
+   thumb. --text reads on both grounds a bar cell has (6.9:1 over the bar,
+   16.4:1 over the base), so the underline carries "today" instead of the
+   colour, and it holds wherever the bar's edge falls under the label.
+   Keyed on .on-bar rather than on the level, because whether the bar has
+   reached the label depends on the fill and on the cell's shape - see
+   markLabelGround in app.js. An almost-empty week keeps the accent, which is
+   what the same day carries at day zoom. */
+.cal-day.on-bar.is-today .cal-num { color: var(--text); text-decoration: underline; }
+/* The selection ring: its own layer, and its colour follows the ground. Two
+   separate faults here, both found by measuring rather than looking.
+
+   It was an inset box-shadow, which is painted with the background - so the
+   fill bar, an absolutely positioned ::before, covered it along every straight
+   edge and left only the corners of the ring showing. An `outline` does not fix
+   that: Chrome paints an element's outline before its positioned descendants
+   whether or not the element is a stacking context (isolation: isolate changed
+   nothing). A ::after with a z-index above the bar does.
+
+   And the accent cannot be the ring on every ground. --primary over the top
+   ramp step measured 1.32:1 on dark and 1.00:1 on light - on light they are
+   the same colour, so selecting the biggest day of the month drew a ring
+   literally nobody could see. This is the same swap the day number already
+   makes for the same reason: keep the accent on the calm steps and hand it to
+   the contrasting ink where the ground is bright. Worst case is now 4.6:1.
+
+   A cell with a bar needs neither swap: its fill pulls in by the ring's width
+   when it is selected (below), so the ring is always on the cell's own base
+   colour and can stay the accent, exactly as it is in the day grid. Swapping it
+   to --text there instead put a loud white ring around an empty selected week -
+   correct by contrast, wrong by a mile on the screen. */
+.cal-day.is-selected::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border: 2.5px solid var(--primary);
+  border-radius: inherit;
+  /* Above the bar (auto) and the figures (1). A 2.5px edge covers no glyph. */
+  z-index: 2;
+  pointer-events: none;
+}
+.cal-day[data-level="2"].is-selected::after { border-color: var(--text); }
+.cal-day[data-level="3"].is-selected::after { border-color: var(--cal-3-ink); }
 .cal-day.is-selected .cal-num { font-weight: 750; }
 .cal-day:active { transform: scale(.92); }
 

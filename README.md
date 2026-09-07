@@ -415,6 +415,82 @@ to a week that spills into the *next* month, and a week is framed by the month i
 **ends** in — so paging back landed on the week it started from. It steps to the
 last week that finishes inside the target month instead.
 
+### One control at four zooms
+
+"My day to day looks good but the week one is so much different" — and it was.
+The two grids had drifted into different dialects, which a diff of their
+computed styles made plain:
+
+| | day cell | week row, before |
+|---|---|---|
+| Label | 13px / 700 | 14.5px / 700 |
+| Figure | 11px / 500 | 14.5px / 600 |
+| Empty ground | `--cal-0` | `--fill-soft` — a lighter grey than anything in the day grid |
+| Fill | ramp step, edge to edge | `--cal-2` at half opacity — dimmer than anything in it |
+| Weekday header | shown | hidden |
+| Inset | 2px | 15px |
+
+The same ₹100 therefore read as a bright tile at day zoom and a muted grey pill
+at week zoom. Every one of those is now the day cell's value, and only the two
+things that *must* differ still do: a week row spans seven columns instead of
+one, and it holds its label at the left and its figure at the right rather than
+stacking them. `.cal-week` no longer restates any type at all — inheriting
+`.cal-num` and `.cal-sum` unchanged is the point.
+
+Two consequences worth naming:
+
+- **The weekday initials stay at week zoom.** A week row runs Monday to Sunday,
+  so they still label exactly what the row spans — and because the header stays,
+  the top of the card does not move when you switch. Every row lands where that
+  week's seven squares were, so Day → Week now reads as the squares in each row
+  merging into one capsule, in place.
+- **An empty week is level 0**, the same level an empty day gets, rather than a
+  bar of zero length. It then picks up the same base colour, the same accent ring
+  when selected and the same accent label when it is today, with no special
+  cases at all.
+
+The fill stays a **length** rather than becoming a flat step, and that is not
+inconsistency. Day-to-day spending swings hard and has real zeros, so four
+levels sort it usefully; week-to-week totals sit close together and would all
+quantise onto the same step — five identical rows, telling you nothing. What
+changed is that the bar is drawn in the ramp's own third step at full strength,
+so it belongs to the same palette as the cells around it.
+
+### The ring nobody could see
+
+Making the two grids share a palette put the selection ring on grounds it had
+never been measured against, and that turned up a bug that had been shipping in
+the day grid all along. The ring was `--primary` on every cell. Against the top
+ramp step that is **1.32:1 on dark and 1.00:1 on light** — on light they are
+*the same colour*. Selecting the biggest day of the month drew a ring that did
+not exist. Today's number had the same fault one step lower: `--primary` over
+`--cal-2` is 2.63:1.
+
+Both now make the swap the day grid already made at its brightest step: keep the
+accent on the calm steps, hand it to the contrasting ink where the ground is
+bright. Worst case across every ground, both themes: **4.6:1**.
+
+Two mechanical faults came out with it:
+
+- The ring was an **inset `box-shadow`**, which is painted with the background —
+  so the fill bar, an absolutely positioned `::before`, covered it along every
+  straight edge and left only the corners showing. An `outline` does *not* fix
+  this: Chrome paints an element's outline before its positioned descendants
+  whether or not the element is a stacking context (`isolation: isolate` changed
+  nothing measurable). A `::after` with a `z-index` above the bar does.
+- A selected bar cell's fill now **pulls in by 5px**, so the ring always has the
+  cell's own base colour under it and can stay the accent. Insetting it by the
+  ring's own 2.5px was not enough: the two abutted exactly, so whether any gap
+  appeared came down to how the browser rounded a half-pixel border.
+
+And the bar is rounded where it starts and square where it stops. `border-radius:
+inherit` rounded *both* ends, which made a half-filled row read as a shorter pill
+nested inside the cell rather than as a level filled up to here.
+
+`seamtest.js` holds the line: it compares every zoom's shared tokens against the
+day cell's, and samples rendered pixels for the ring and for today's mark on
+whichever ground each actually sits on.
+
 ### Colour does not scale with the area it fills
 
 The four-step ramp was designed for a 44px day cell, where a saturated fill is a

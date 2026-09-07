@@ -2,7 +2,7 @@
 // two are what tell a fixed build apart from a cached one. Where a release only
 // rewrites visible copy, the copy itself is the tell, so this may hold while
 // CACHE takes a suffix instead.
-const APP_VERSION = 42;
+const APP_VERSION = 43;
 
 const state = {
   date: todayStr(),
@@ -785,6 +785,27 @@ function moveCalendarFrame(delta) {
  * money, and the whole point of the cell is that it is an amount. The symbol is
  * one narrow glyph and it settles the question at a glance.
  */
+/**
+ * Marks a cell whose LABEL sits over the fill bar, so "today" can keep the
+ * accent everywhere else.
+ *
+ * The accent reads at 6.2:1 on a cell's base colour and 2.6:1 over the bar -
+ * indigo on indigo - so a label on the bar has to fall back to full-contrast
+ * ink and an underline, which is the swap the day grid already makes on its
+ * brightest step. But that swap is only right where the bar actually reaches
+ * the label, or an almost-empty week would be marked differently from the same
+ * day at day zoom for no visible reason.
+ *
+ * Where the bar reaches depends on the shape. A week's label sits at the left
+ * edge behind a 11px inset, so a bar of any length runs under it. A month's
+ * label is centred in a cell about 66px tall and the bar climbs from the
+ * bottom, so it has to pass roughly the halfway mark first.
+ */
+const LABEL_OVER_BAR = { week: 0.03, month: 0.45 };
+function markLabelGround(cell, fill, shape) {
+  if (fill > LABEL_OVER_BAR[shape]) cell.classList.add('on-bar');
+}
+
 function cellAmount(minor) {
   const s = Store.getSettings();
   const value = Math.round((minor || 0) / Store.MINOR_PER_MAJOR);
@@ -931,8 +952,15 @@ function buildWeekGrid(month, selected, categoryId) {
     // four shades is a wall of colour: the ramp was designed for a 44px day
     // cell, and the same fill across a full-width row reads as decoration
     // rather than as a quantity. Length carries it better at this size.
-    cell.style.setProperty('--fill', future ? '0' : (totalMinor / max).toFixed(3));
-    cell.dataset.level = future ? 'future' : 'bar';
+    const fill = future ? 0 : totalMinor / max;
+    cell.style.setProperty('--fill', fill.toFixed(3));
+    markLabelGround(cell, fill, 'week');
+    // A week or month with nothing in it is level 0 - the SAME level an empty
+    // day gets, so it takes the same base colour, the same accent ring when
+    // selected and the same accent number when it is today. Calling it a bar of
+    // zero length instead made an empty selected week draw the bright ring and
+    // ink that only a bar's ground needs.
+    cell.dataset.level = future ? 'future' : totalMinor > 0 ? 'bar' : '0';
     if (period === Store.periodOf(today, 'week')) cell.classList.add('is-today');
     if (period === selected) {
       cell.classList.add('is-selected');
@@ -992,12 +1020,22 @@ function buildYearGrid(startYear, selected, categoryId) {
     const future = period > thisYear;
     const cell = document.createElement('button');
     cell.type = 'button';
+    // cal-year alongside cal-month: a year cell IS a month cell in every visual
+    // respect now, and the extra class is left as the hook for anything that
+    // ever needs to tell the two apart.
     cell.className = 'cal-day cal-month cal-year';
     cell.dataset.date = period;
     cell.dataset.amount = String(totalMinor);
     cell.disabled = future;
-    cell.style.setProperty('--fill', future ? '0' : (totalMinor / max).toFixed(3));
-    cell.dataset.level = future ? 'future' : 'bar';
+    const fill = future ? 0 : totalMinor / max;
+    cell.style.setProperty('--fill', fill.toFixed(3));
+    markLabelGround(cell, fill, 'month');
+    // A week or month with nothing in it is level 0 - the SAME level an empty
+    // day gets, so it takes the same base colour, the same accent ring when
+    // selected and the same accent number when it is today. Calling it a bar of
+    // zero length instead made an empty selected week draw the bright ring and
+    // ink that only a bar's ground needs.
+    cell.dataset.level = future ? 'future' : totalMinor > 0 ? 'bar' : '0';
     if (period === thisYear) cell.classList.add('is-today');
     if (period === selected) {
       cell.classList.add('is-selected');
@@ -1044,8 +1082,15 @@ function buildMonthGrid(year, selected, categoryId) {
     cell.dataset.date = period;
     cell.dataset.amount = String(totalMinor);
     cell.disabled = future;
-    cell.style.setProperty('--fill', future ? '0' : (totalMinor / max).toFixed(3));
-    cell.dataset.level = future ? 'future' : 'bar';
+    const fill = future ? 0 : totalMinor / max;
+    cell.style.setProperty('--fill', fill.toFixed(3));
+    markLabelGround(cell, fill, 'month');
+    // A week or month with nothing in it is level 0 - the SAME level an empty
+    // day gets, so it takes the same base colour, the same accent ring when
+    // selected and the same accent number when it is today. Calling it a bar of
+    // zero length instead made an empty selected week draw the bright ring and
+    // ink that only a bar's ground needs.
+    cell.dataset.level = future ? 'future' : totalMinor > 0 ? 'bar' : '0';
     if (period === thisMonth) cell.classList.add('is-today');
     if (period === selected) {
       cell.classList.add('is-selected');
@@ -1129,12 +1174,15 @@ function renderCalendar(data) {
   el('calNext').disabled = byYears ? Number(frame) >= Number(unit) : frame >= unit;
   el('calNote').textContent = `Swipe for other ${byYears ? 'years' : byMonths ? 'years' : 'months'}`;
 
-  // Only the day grid has weekday columns. Weeks are rows and months are their
-  // own cells, so a row of initials over either would be labelling nothing.
+  // Days and weeks share the header; months and years do not have columns to
+  // label. A week row runs Monday to Sunday - exactly the span the initials
+  // describe - so they still say something true at that zoom, and keeping them
+  // means the top of the card does not jump when you switch between the two.
+  const hasDows = gran === 'day' || gran === 'week';
   const dows = el('calDows');
-  dows.classList.toggle('hidden', gran !== 'day');
+  dows.classList.toggle('hidden', !hasDows);
   dows.innerHTML = '';
-  if (gran === 'day') {
+  if (hasDows) {
     // Weekday initials come from the browser rather than a hard-coded list, so a
     // phone set to another language gets its own.
     for (let i = 0; i < 7; i++) {
